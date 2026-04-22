@@ -6,186 +6,461 @@
     <title>Sentence Builder - Marie's Creative Classroom</title>
     <style>
         :root {
-            --lego-red: #D11013; --lego-blue: #0055BF; --lego-yellow: #F7D117;
-            --lego-white: #FFFFFF; --lego-black: #231F20; --lego-gray: #A0A5A9;
+            --lego-red: #D11013;
+            --lego-blue: #0055BF;
+            --lego-yellow: #F7D117;
+            --lego-white: #FFFFFF;
+            --lego-black: #231F20;
+            --lego-gray: #A0A5A9;
         }
 
         body {
             font-family: "Comic Sans MS", "Comic Sans", "Chalkboard SE", sans-serif;
-            background-color: #f0f0f0; margin: 0; padding: 0;
-            overflow-x: hidden; touch-action: manipulation;
+            background-color: #f0f0f0; color: var(--lego-black); margin: 0; padding: 0;
+            overflow: hidden; touch-action: manipulation;
         }
 
-        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; }
+        .brick-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .lego-brick {
+            position: absolute; width: 40px; height: 25px; border-radius: 4px;
+            box-shadow: inset -3px -3px 0 rgba(0,0,0,0.2); animation: fall 10s linear infinite;
+        }
+        .lego-brick::before, .lego-brick::after {
+            content: ''; position: absolute; width: 100px; height: 5px;
+            background: inherit; top: -5px; border-radius: 2px 2px 0 0;
+        }
+        .lego-brick::before { width: 10px; left: 7px; } .lego-brick::after { width: 10px; left: 23px; }
+
+        @keyframes fall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Responsive Layout Updates */
+        .screen { 
+            display: none; 
+            height: 100vh; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 10px; 
+            box-sizing: border-box; 
+            position: relative; 
+            z-index: 1; 
+            overflow: hidden;
+        }
         .active { display: flex; }
 
         .main-title { 
-            font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 900; color: var(--lego-red); 
-            text-shadow: 3px 3px 0 var(--lego-white), 6px 6px 0 var(--lego-black); margin: 10px 0;
+            font-size: clamp(2rem, 6vw, 4rem); font-weight: 900; color: var(--lego-red); 
+            text-shadow: 2px 2px 0 var(--lego-white), 4px 4px 0 var(--lego-black); margin: 5px 0;
         }
 
-        /* BIG PHOTO UI */
+        .btn {
+            background-color: var(--lego-blue); color: white; border: 3px solid var(--lego-black);
+            padding: 10px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 8px;
+            cursor: pointer; margin: 5px; box-shadow: 0 4px 0 var(--lego-black); transition: all 0.1s;
+        }
+        .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--lego-black); }
+        .btn-yellow { background-color: var(--lego-yellow); color: var(--lego-black); }
+        .btn-red { background-color: var(--lego-red); }
+
         .photo-holder {
-            width: 95%; height: 350px; border: 6px solid var(--lego-black);
+            width: 95%; height: 35vh; border: 4px solid var(--lego-gray);
             background: #eee; margin: 10px auto; display: flex;
-            align-items: center; justify-content: center; border-radius: 15px; overflow: hidden;
+            align-items: center; justify-content: center; overflow: hidden; border-radius: 12px;
         }
         .photo-holder img { width: 100%; height: 100%; object-fit: contain; }
 
-        /* SENTENCE TILES */
         .sentence-area {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
-            padding: 20px; width: 95%; background: white; border: 4px solid var(--lego-black); border-radius: 15px;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+            min-height: 60px; width: 95%; background: white; padding: 10px;
+            border: 3px solid var(--lego-black); border-radius: 12px; margin: 5px 0;
         }
+
         .word-tile {
             background: var(--lego-yellow); border: 3px solid var(--lego-black);
-            padding: 12px 24px; font-size: 1.6rem; font-weight: bold;
-            border-radius: 10px; cursor: pointer; box-shadow: 0 5px 0 #000;
+            padding: 6px 14px; font-size: 1.2rem; font-weight: bold;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 var(--lego-black);
+            user-select: none; transition: transform 0.2s;
         }
-        .word-tile.editing { background: white; color: var(--lego-blue); border-style: dashed; }
-        .word-tile.wrong-guess { animation: shake 0.3s; background: var(--lego-red); color: white; }
-
-        @keyframes shake {
+        .word-tile.correct { background-color: #4CAF50 !important; color: white; }
+        .word-tile.editing { background-color: white !important; border: 3px dashed var(--lego-blue); color: var(--lego-blue); }
+        
+        .shake { animation: shakeTile 0.4s; }
+        @keyframes shakeTile {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            75% { transform: translateX(8px); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
         }
 
-        /* KEYBOARD */
-        .keyboard-wrap {
-            width: 100%; max-width: 850px; background: #ddd;
-            padding: 15px; border-radius: 15px; border: 3px solid #000; margin-top: auto;
+        .keyboard-container { width: 100%; max-width: 700px; padding: 5px; background: #ccc; border-radius: 10px; margin-top: auto; }
+        .kb-row { display: flex; justify-content: center; gap: 3px; margin-bottom: 3px; }
+        .kb-key { 
+            background: white; border: 2px solid black; padding: 8px 4px; min-width: 30px; 
+            text-align: center; font-weight: bold; border-radius: 5px; cursor: pointer;
+            box-shadow: 0 2px 0 #000; font-size: 1rem;
         }
-        .kb-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; }
-        .key {
-            background: white; border: 2px solid #000; padding: 12px;
-            min-width: 40px; text-align: center; font-weight: bold;
-            border-radius: 8px; cursor: pointer; box-shadow: 0 3px 0 #000; font-size: 1.1rem;
+        .kb-key.wide { min-width: 60px; background: #bbb; }
+        .kb-key.toggle { background: var(--lego-yellow); min-width: 50px; }
+
+        .input-display { 
+            font-size: 1.4rem; font-weight: bold; color: var(--lego-blue); 
+            background: #fff; padding: 5px 15px; border-radius: 20px; border: 2px solid #000; margin: 5px;
         }
-        .key:active { transform: translateY(2px); box-shadow: none; }
-        .btn { background-color: var(--lego-blue); color: white; border: 4px solid #000; padding: 15px 30px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 5px 0 #000; }
+
+        .edit-row { display: flex; gap: 10px; margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 8px; border: 2px solid #000; }
+        .drop-zone { width: 120px; height: 100px; border: 3px dashed #666; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; position: relative; }
+        .edit-input { flex-grow: 1; padding: 15px; font-size: 1.1rem; border: 2px solid #000; }
+
+        .duel-container { display: flex; width: 100vw; flex: 1; overflow: hidden; }
+        .team-side { flex: 1; border: 1px solid #000; display: flex; flex-direction: column; align-items: center; padding: 5px; background: rgba(255,255,255,0.9); }
+        .scoreboard { background: var(--lego-black); color: var(--lego-yellow); padding: 2px 15px; border-radius: 20px; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
+    <div class="brick-bg" id="brick-container"></div>
+    <button id="global-back-btn" class="btn btn-yellow" style="position: fixed; top: 10px; left: 10px; z-index: 100; display:none;" onclick="goBack()">⬅ BACK</button>
+
     <div id="menu-screen" class="screen active">
         <h1 class="main-title">SENTENCE BUILDER</h1>
-        <p>Marie’s Creative Classroom</p>
-        <button class="btn" style="background:var(--lego-blue);" onclick="initMode('unscramble')">UNSCRAMBLE</button><br>
-        <button class="btn" style="background:var(--lego-yellow); color:black;" onclick="initMode('spelling')">WHAT'S WRONG (SPELLING)</button><br>
-        <button class="btn" style="background:var(--lego-red);" onclick="initMode('grammar')">WHAT'S WRONG (GRAMMAR)</button>
+        <button class="btn" onclick="openStyleSelect('practice')">PRACTICE</button>
+        <button class="btn btn-yellow" onclick="showScreen('setup-screen')">TEAM DUEL</button>
+        <button class="btn btn-red" onclick="refreshEditUI(); showScreen('edit-screen');">EDIT LIST</button>
+    </div>
+
+    <div id="setup-screen" class="screen">
+        <h2>TEAM SETUP</h2>
+        <div style="display:flex; gap: 10px;">
+            <div style="text-align:center;">
+                <input type="text" id="team-a-name" value="TEAM A" class="edit-input" style="width:100px;">
+                <p>Range: <input type="text" id="team-a-nums" value="1-20" style="width:50px;"></p>
+            </div>
+            <div style="text-align:center;">
+                <input type="text" id="team-b-name" value="TEAM B" class="edit-input" style="width:100px;">
+                <p>Range: <input type="text" id="team-b-nums" value="1-20" style="width:50px;"></p>
+            </div>
+        </div>
+        <button class="btn" onclick="openStyleSelect('duel')">CONTINUE</button>
+    </div>
+
+    <div id="mode-screen" class="screen">
+        <h2>CHOOSE STYLE</h2>
+        <button class="btn" onclick="initGame('unscramble')">UNSCRAMBLE</button>
+        <button class="btn btn-yellow" onclick="initGame('wrong')">WHAT'S WRONG?</button>
     </div>
 
     <div id="game-screen" class="screen">
-        <div id="photo-p" class="photo-holder"></div>
-        <div id="area-p" class="sentence-area"></div>
-        <div id="kb-p" class="keyboard-wrap"></div>
-        <button class="btn" id="next-btn" style="display:none; margin-top:15px;" onclick="nextRound()">NEXT ROUND ➔</button>
+        <div class="photo-holder" id="photo-p"></div>
+        <div id="sentence-container" class="sentence-area"></div>
+        <div id="pool-container" class="sentence-area"></div>
+        
+        <div id="keyboard-wrapper-p" style="width:100%; display:flex; flex-direction:column; align-items:center;">
+            <div id="input-display-p" class="input-display" style="display:none;">_</div>
+            <div id="keyboard-p" class="keyboard-container" style="display:none;"></div>
+        </div>
+
+        <div style="display:flex; gap: 10px; margin-top: 5px;">
+            <button class="btn btn-yellow" onclick="speakText()">🔊 LISTEN</button>
+            <button id="next-btn-p" class="btn" style="display:none;" onclick="nextRound()">NEXT ➔</button>
+        </div>
+    </div>
+
+    <div id="duel-screen" class="screen" style="padding:0;">
+        <div class="duel-container">
+            <div class="team-side">
+                <div class="scoreboard" id="score-a">0</div>
+                <div class="photo-holder" id="photo-a" style="height:20vh;"></div>
+                <div id="area-a" class="sentence-area"></div>
+                <div id="pool-a" class="sentence-area"></div>
+                <div id="input-display-a" class="input-display" style="display:none;">_</div>
+                <div id="keyboard-a" class="keyboard-container" style="display:none;"></div>
+            </div>
+            <div class="team-side">
+                <div class="scoreboard" id="score-b">0</div>
+                <div class="photo-holder" id="photo-b" style="height:20vh;"></div>
+                <div id="area-b" class="sentence-area"></div>
+                <div id="pool-b" class="sentence-area"></div>
+                <div id="input-display-b" class="input-display" style="display:none;">_</div>
+                <div id="keyboard-b" class="keyboard-container" style="display:none;"></div>
+            </div>
+        </div>
+        <button id="next-btn-duel" class="btn btn-yellow" style="display:none; position:absolute; bottom:80px;" onclick="nextRound()">NEXT ROUND ➔</button>
+    </div>
+
+    <div id="edit-screen" class="screen">
+        <h3>EDIT LESSON</h3>
+        <p style="font-size:0.8rem;">Use: <b>Wrong/Right</b> (e.g. "happpy/happy") for correction mode.</p>
+        <div id="edit-list-container" style="width: 100%; overflow-y: auto; flex:1;"></div>
+        <div style="padding:10px;">
+            <button class="btn" onclick="addNewRow()">+ ADD</button>
+            <button class="btn btn-yellow" onclick="saveAndCopy()">SAVE & COPY LINK</button>
+        </div>
     </div>
 
     <script>
-        let gameList = [
-            {sentence: "The big dog/dogg runs fast", img: ""},
-            {sentence: "She is/are/is happy", img: ""} // Format: Wrong/Correct
-        ];
+        let gameList = [{sentence: "The big dog runs fast", img: ""}, {sentence: "He is happpy/happy", img: ""}];
         let currentIndex = 0;
-        let currentMode = '';
-        let typedBuffer = "";
-        let activeIndex = null;
-        let capsState = { p: true }; // Default to caps for visibility
+        let currentGameMode = 'practice'; // 'practice' or 'duel'
+        let currentGameStyle = 'unscramble'; // 'unscramble' or 'wrong'
+        let scoreA = 0, scoreB = 0;
+        let roundActive = true;
+        let screenHistory = ['menu-screen'];
+        
+        let currentTyped = { p: "", a: "", b: "" };
+        let capsState = { p: true, a: true, b: true };
+        let activeTargetWord = { p: null, a: null, b: null };
 
-        const keys = [
-            ["Q","W","E","R","T","Y","U","I","O","P"],
-            ["A","S","D","F","G","H","J","K","L"],
-            ["Z","X","C","V","B","N","M", "Del"]
-        ];
+        const qwerty = [["Q","W","E","R","T","Y","U","I","O","P"], ["A","S","D","F","G","H","J","K","L"], ["Z","X","C","V","B","N","M"]];
 
-        function initMode(mode) {
-            currentMode = mode;
-            document.getElementById('menu-screen').classList.remove('active');
-            document.getElementById('game-screen').classList.add('active');
-            loadRound();
+        window.onload = () => {
+            createBricks();
+            const params = new URLSearchParams(window.location.search);
+            if(params.get('d')) gameList = JSON.parse(atob(params.get('d')));
+        };
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (id !== screenHistory[screenHistory.length-1]) screenHistory.push(id);
+            document.getElementById('global-back-btn').style.display = (id === 'menu-screen') ? 'none' : 'block';
         }
 
-        function loadRound() {
-            const item = gameList[currentIndex];
-            const area = document.getElementById('area-p');
-            area.innerHTML = '';
-            typedBuffer = "";
-            activeIndex = null;
-            document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('photo-p').innerHTML = item.img ? `<img src="${item.img}">` : "🖼️";
+        function goBack() {
+            if (screenHistory.length > 1) {
+                screenHistory.pop();
+                showScreen(screenHistory.pop());
+            }
+        }
 
-            let words = item.sentence.split(' ');
-            words.forEach((w, idx) => {
-                const tile = document.createElement('div');
-                tile.className = 'word-tile';
-                
-                if(w.includes('/')) {
-                    const [wrong, right] = w.split('/');
-                    tile.innerText = wrong;
-                    tile.onclick = () => startCorrection(idx, right);
-                } else {
-                    tile.innerText = w;
+        function openStyleSelect(mode) { currentGameMode = mode; showScreen('mode-screen'); }
+
+        function initGame(style) {
+            currentGameStyle = style;
+            currentIndex = 0; scoreA = 0; scoreB = 0;
+            loadCurrentRound();
+        }
+
+        function loadCurrentRound() {
+            roundActive = true;
+            currentTyped = { p: "", a: "", b: "" };
+            activeTargetWord = { p: null, a: null, b: null };
+            
+            document.getElementById('next-btn-p').style.display = 'none';
+            document.getElementById('next-btn-duel').style.display = 'none';
+
+            if(currentGameMode === 'practice') {
+                showScreen('game-screen');
+                setupArea('sentence-container', 'pool-container', 'photo-p', 'p');
+            } else {
+                showScreen('duel-screen');
+                setupArea('area-a', 'pool-a', 'photo-a', 'a');
+                setupArea('area-b', 'pool-b', 'photo-b', 'b');
+                updateScores();
+            }
+        }
+
+        function setupArea(targetId, poolId, photoId, side) {
+            const target = document.getElementById(targetId);
+            const pool = document.getElementById(poolId);
+            const item = gameList[currentIndex];
+            
+            document.getElementById(photoId).innerHTML = item.img ? `<img src="${item.img}">` : "🖼️";
+            target.innerHTML = ''; pool.innerHTML = '';
+            
+            // Toggle Keyboard visibility based on style
+            const kb = document.getElementById('keyboard-' + side);
+            const disp = document.getElementById('input-display-' + side);
+            kb.style.display = (currentGameStyle === 'wrong') ? 'block' : 'none';
+            disp.style.display = (currentGameStyle === 'wrong') ? 'block' : 'none';
+            if(currentGameStyle === 'wrong') renderKeyboard(side);
+
+            let rawWords = item.sentence.split(' ');
+
+            if(currentGameStyle === 'unscramble') {
+                let shuffled = [...rawWords].sort(() => Math.random() - 0.5);
+                shuffled.forEach(w => {
+                    const tile = createTile(w, side, true);
                     tile.onclick = () => {
-                        tile.classList.add('wrong-guess');
-                        setTimeout(() => tile.classList.remove('wrong-guess'), 400);
+                        if(!roundActive) return;
+                        if(tile.parentElement === pool) target.appendChild(tile);
+                        else pool.appendChild(tile);
+                        checkUnscrambleWin(target, rawWords, side);
                     };
-                }
-                area.appendChild(tile);
-            });
-            renderKeyboard('p');
+                    pool.appendChild(tile);
+                });
+            } else {
+                // WHAT'S WRONG MODE logic
+                rawWords.forEach(wordData => {
+                    const isTrap = wordData.includes('/');
+                    const displayWord = isTrap ? wordData.split('/')[0] : wordData;
+                    const correctWord = isTrap ? wordData.split('/')[1] : wordData;
+                    
+                    const tile = createTile(displayWord, side, false);
+                    tile.onclick = () => {
+                        if(!roundActive || activeTargetWord[side]) return;
+                        if(isTrap) {
+                            tile.classList.add('editing');
+                            tile.innerText = "...";
+                            activeTargetWord[side] = { tile, correct: correctWord };
+                        } else {
+                            tile.classList.add('shake');
+                            setTimeout(() => tile.classList.remove('shake'), 400);
+                        }
+                    };
+                    target.appendChild(tile);
+                });
+            }
+        }
+
+        function createTile(text, side, isUnscramble) {
+            const div = document.createElement('div');
+            div.className = 'word-tile';
+            div.innerText = text;
+            return div;
         }
 
         function renderKeyboard(side) {
-            const kb = document.getElementById('kb-' + side);
-            kb.innerHTML = '';
-            keys.forEach(row => {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'kb-row';
-                row.forEach(k => {
-                    const keyDiv = document.createElement('div');
-                    keyDiv.className = 'key';
-                    keyDiv.innerText = capsState[side] ? k : k.toLowerCase();
-                    keyDiv.onclick = () => handleInput(side, k);
-                    rowDiv.appendChild(keyDiv);
+            const container = document.getElementById('keyboard-' + side);
+            container.innerHTML = '';
+            qwerty.forEach(row => {
+                const div = document.createElement('div');
+                div.className = 'kb-row';
+                row.forEach(key => {
+                    const k = document.createElement('div');
+                    k.className = 'kb-key';
+                    k.innerText = capsState[side] ? key : key.toLowerCase();
+                    k.onclick = () => handleInput(k.innerText, side);
+                    div.appendChild(k);
                 });
-                kb.appendChild(rowDiv);
+                container.appendChild(div);
             });
-        }
 
-        function startCorrection(idx, correct) {
-            activeIndex = idx;
-            const tiles = document.querySelectorAll('.word-tile');
-            tiles.forEach(t => t.classList.remove('editing'));
-            tiles[idx].classList.add('editing');
-            tiles[idx].innerText = "_";
-            typedBuffer = "";
-        }
-
-        function handleInput(side, char) {
-            if(activeIndex === null) return;
-            const correctStr = gameList[currentIndex].sentence.split(' ')[activeIndex].split('/')[1];
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'kb-row';
             
-            if(char === 'Del') typedBuffer = typedBuffer.slice(0, -1);
-            else typedBuffer += char;
+            const shift = document.createElement('div');
+            shift.className = 'kb-key toggle';
+            shift.innerText = "CAPS";
+            shift.onclick = () => { capsState[side] = !capsState[side]; renderKeyboard(side); };
 
-            const tile = document.querySelectorAll('.word-tile')[activeIndex];
-            tile.innerText = typedBuffer + "_";
+            const space = document.createElement('div');
+            space.className = 'kb-key wide';
+            space.innerText = "SPACE";
+            space.onclick = () => handleInput(" ", side);
 
-            if(typedBuffer.toLowerCase() === correctStr.toLowerCase()) {
-                tile.innerText = correctStr;
-                tile.style.background = "#4CAF50";
+            const del = document.createElement('div');
+            del.className = 'kb-key wide';
+            del.innerText = "DEL";
+            del.onclick = () => handleInput("DEL", side);
+
+            bottomRow.append(shift, space, del);
+            container.appendChild(bottomRow);
+        }
+
+        function handleInput(char, side) {
+            if(!roundActive || !activeTargetWord[side]) return;
+
+            if(char === "DEL") currentTyped[side] = currentTyped[side].slice(0, -1);
+            else currentTyped[side] += char;
+
+            document.getElementById('input-display-' + side).innerText = currentTyped[side] + "_";
+
+            if(currentTyped[side] === activeTargetWord[side].correct) {
+                const tile = activeTargetWord[side].tile;
+                tile.innerText = currentTyped[side];
                 tile.classList.remove('editing');
-                activeIndex = null;
-                document.getElementById('next-btn').style.display = 'block';
+                tile.classList.add('correct');
+                endRound(side.toUpperCase());
             }
+        }
+
+        function checkUnscrambleWin(container, targetArr, side) {
+            const current = Array.from(container.children).map(t => t.innerText);
+            if(current.join(' ') === targetArr.join(' ')) {
+                Array.from(container.children).forEach(t => t.classList.add('correct'));
+                endRound(side.toUpperCase());
+            }
+        }
+
+        function endRound(winner) {
+            if(!roundActive) return;
+            roundActive = false;
+            if(winner === 'A' || winner === 'P') scoreA++;
+            if(winner === 'B') scoreB++;
+            
+            updateScores();
+            document.getElementById('next-btn-p').style.display = 'block';
+            document.getElementById('next-btn-duel').style.display = 'block';
         }
 
         function nextRound() {
             currentIndex++;
-            if(currentIndex < gameList.length) loadRound();
-            else { alert("Amazing Job!"); location.reload(); }
+            if(currentIndex >= gameList.length) {
+                alert("Wonderful! Game Finished.");
+                showScreen('menu-screen');
+            } else {
+                loadCurrentRound();
+            }
+        }
+
+        function updateScores() {
+            if(document.getElementById('score-a')) document.getElementById('score-a').innerText = scoreA;
+            if(document.getElementById('score-b')) document.getElementById('score-b').innerText = scoreB;
+        }
+
+        function speakText() {
+            let msg = gameList[currentIndex].sentence.replace(/\//g, ' ');
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(msg));
+        }
+
+        function refreshEditUI() {
+            const container = document.getElementById('edit-list-container');
+            container.innerHTML = '';
+            gameList.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'edit-row';
+                row.innerHTML = `
+                    <div class="drop-zone" id="drop-${idx}">${item.img ? `<img src="${item.img}">` : 'Drop Image'}</div>
+                    <input type="text" class="edit-input" value="${item.sentence}" onchange="gameList[${idx}].sentence=this.value">
+                    <button class="btn btn-red" onclick="gameList.splice(${idx},1); refreshEditUI();">X</button>`;
+                container.appendChild(row);
+                setupDropZone(document.getElementById(`drop-${idx}`), idx);
+            });
+        }
+
+        function setupDropZone(zone, idx) {
+            zone.ondragover = (e) => e.preventDefault();
+            zone.ondrop = (e) => {
+                e.preventDefault();
+                if(e.dataTransfer.files.length) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => { gameList[idx].img = ev.target.result; refreshEditUI(); };
+                    reader.readAsDataURL(e.dataTransfer.files[0]);
+                }
+            };
+        }
+
+        function addNewRow() { gameList.push({sentence: "", img: ""}); refreshEditUI(); }
+
+        function saveAndCopy() {
+            const data = btoa(JSON.stringify(gameList));
+            const url = window.location.origin + window.location.pathname + "?d=" + data;
+            navigator.clipboard.writeText(url);
+            alert("Lesson Link Copied to Clipboard!");
+        }
+
+        function createBricks() {
+            const colors = ['#D11013', '#0055BF', '#F7D117', '#FFFFFF'];
+            for(let i=0; i<15; i++) {
+                const b = document.createElement('div');
+                b.className = 'lego-brick';
+                b.style.left = Math.random() * 95 + '%';
+                b.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
+                b.style.animationDelay = (Math.random() * 8) + 's';
+                document.getElementById('brick-container').appendChild(b);
+            }
         }
     </script>
 </body>
