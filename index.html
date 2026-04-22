@@ -3,464 +3,433 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sentence Builder - Marie's Creative Classroom</title>
+    <title>Spelling Bee - Marie's Creative Classroom </title>
     <style>
         :root {
-            --lego-red: #D11013;
-            --lego-blue: #0055BF;
-            --lego-yellow: #F7D117;
-            --lego-white: #FFFFFF;
-            --lego-black: #231F20;
-            --lego-gray: #A0A5A9;
+            --lego-red: #e3000b;
+            --lego-blue: #0055bf;
+            --lego-yellow: #ffcf00;
+            --lego-green: #008528;
+            --lego-black: #000000;
+            --lego-grey: #a0a5a9;
+            --baseplate: #dcdcdc;
+            --game-scale: 1;
         }
 
         body {
-            font-family: "Comic Sans MS", "Comic Sans", "Chalkboard SE", sans-serif;
-            background-color: #f0f0f0; color: var(--lego-black); margin: 0; padding: 0;
-            overflow: hidden; touch-action: manipulation;
+            font-family: "Arial Black", "Arial", sans-serif;
+            background-color: var(--baseplate);
+            /* LEGO Baseplate Pattern */
+            background-image: radial-gradient(#bcbcbc 15%, transparent 20%);
+            background-size: 40px 40px;
+            color: var(--lego-black);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            touch-action: manipulation;
         }
 
-        .brick-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        /* Floating LEGO Bricks Animation */
         .lego-brick {
-            position: absolute; width: 40px; height: 25px; border-radius: 4px;
-            box-shadow: inset -3px -3px 0 rgba(0,0,0,0.2); animation: fall 10s linear infinite;
+            position: absolute; width: 60px; height: 30px; border-radius: 4px;
+            opacity: 0.7; z-index: 0; animation: float 10s infinite linear;
+            box-shadow: inset -4px -4px 0 rgba(0,0,0,0.2);
         }
-        .lego-brick::before, .lego-brick::after {
-            content: ''; position: absolute; width: 100px; height: 5px;
-            background: inherit; top: -5px; border-radius: 2px 2px 0 0;
-        }
-        .lego-brick::before { width: 10px; left: 7px; } .lego-brick::after { width: 10px; left: 23px; }
-
-        @keyframes fall {
-            0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        .lego-brick::before {
+            content: ''; position: absolute; top: -8px; left: 10px;
+            width: 12px; height: 8px; background: inherit; border-radius: 2px 2px 0 0;
+            box-shadow: 25px 0 0 inherit;
         }
 
-        /* Responsive Layout Updates */
-        .screen { 
-            display: none; 
-            height: 100vh; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            position: relative; 
-            z-index: 1; 
-            overflow: hidden;
+        @keyframes float {
+            0% { left: -10%; transform: translateY(0px) rotate(0deg); }
+            100% { left: 110%; transform: translateY(-100px) rotate(360deg); }
         }
+
+        .screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box; position: relative; z-index: 1; }
         .active { display: flex; }
 
-        .main-title { 
-            font-size: clamp(2rem, 6vw, 4rem); font-weight: 900; color: var(--lego-red); 
-            text-shadow: 2px 2px 0 var(--lego-white), 4px 4px 0 var(--lego-black); margin: 5px 0;
-        }
-
+        /* 3D LEGO Button Design */
         .btn {
-            background-color: var(--lego-blue); color: white; border: 3px solid var(--lego-black);
-            padding: 10px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 8px;
-            cursor: pointer; margin: 5px; box-shadow: 0 4px 0 var(--lego-black); transition: all 0.1s;
+            background-color: var(--lego-blue);
+            border: 3px solid var(--lego-black);
+            border-radius: 4px;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            color: white;
+            text-transform: uppercase;
+            box-shadow: 0 8px 0 var(--lego-black);
+            position: relative;
+            transition: all 0.1s;
         }
-        .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--lego-black); }
-        .btn-yellow { background-color: var(--lego-yellow); color: var(--lego-black); }
+        .btn:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--lego-black); }
         .btn-red { background-color: var(--lego-red); }
+        .btn-green { background-color: var(--lego-green); }
+        .btn-yellow { background-color: var(--lego-yellow); color: black; }
+        .btn-small { padding: 8px 15px; font-size: 1rem; box-shadow: 0 4px 0 var(--lego-black); }
 
-        .photo-holder {
-            width: 95%; height: 35vh; border: 4px solid var(--lego-gray);
-            background: #eee; margin: 10px auto; display: flex;
-            align-items: center; justify-content: center; overflow: hidden; border-radius: 12px;
-        }
-        .photo-holder img { width: 100%; height: 100%; object-fit: contain; }
+        .main-title { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 900; color: var(--lego-red); -webkit-text-stroke: 2px black; text-shadow: 4px 4px 0 var(--lego-yellow); margin-bottom: 30px; }
 
-        .sentence-area {
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
-            min-height: 60px; width: 95%; background: white; padding: 10px;
-            border: 3px solid var(--lego-black); border-radius: 12px; margin: 5px 0;
+        .game-picker {
+            background: #fff; border: 4px solid var(--lego-black); border-radius: 8px;
+            padding: 10px; display: flex; align-items: center; gap: 10px; margin-bottom: 15px;
         }
 
-        .word-tile {
-            background: var(--lego-yellow); border: 3px solid var(--lego-black);
-            padding: 6px 14px; font-size: 1.2rem; font-weight: bold;
-            border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 var(--lego-black);
-            user-select: none; transition: transform 0.2s;
+        .display-area { 
+            font-size: 2.2rem; font-weight: bold; min-height: 80px; margin: 20px; 
+            padding: 15px; background: white; border: 4px solid var(--lego-black);
+            border-radius: 8px; text-align: center; width: 90%; max-width: 800px;
         }
-        .word-tile.correct { background-color: #4CAF50 !important; color: white; }
-        .word-tile.editing { background-color: white !important; border: 3px dashed var(--lego-blue); color: var(--lego-blue); }
+
+        /* Sentence Building Tiles */
+        .tile {
+            display: inline-block; padding: 10px 20px; background: var(--lego-yellow);
+            border: 3px solid var(--lego-black); border-radius: 6px; margin: 5px;
+            cursor: pointer; box-shadow: 0 5px 0 var(--lego-black); font-size: 1.5rem;
+        }
+        .tile:hover { background: #ffe055; }
+        .tile-empty { border: 3px dashed #888; background: rgba(255,255,255,0.3); box-shadow: none; }
+
+        /* Keyboard */
+        .keyboard { 
+            display: flex; flex-direction: column; align-items: center; width: 100%; 
+            transform: scale(var(--game-scale)); transform-origin: top center;
+        }
+        .kb-row { display: flex; justify-content: center; margin-bottom: 5px; }
+        .key {
+            min-width: 45px; height: 55px; margin: 3px; background: #fff;
+            border: 3px solid var(--lego-black); border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #888;
+        }
+        .key:active { transform: translateY(2px); box-shadow: 0 2px 0 #888; }
+
+        .scoreboard { font-size: 2rem; background: var(--lego-yellow); padding: 5px 20px; border: 4px solid var(--lego-black); border-radius: 8px; }
+
+        .duel-container { display: flex; width: 100vw; height: 75vh; }
+        .team-side { flex: 1; display: flex; flex-direction: column; align-items: center; border: 2px solid var(--lego-black); padding: 10px; }
         
-        .shake { animation: shakeTile 0.4s; }
-        @keyframes shakeTile {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-8px); }
-            40%, 80% { transform: translateX(8px); }
-        }
-
-        .keyboard-container { width: 100%; max-width: 700px; padding: 5px; background: #ccc; border-radius: 10px; margin-top: auto; }
-        .kb-row { display: flex; justify-content: center; gap: 3px; margin-bottom: 3px; }
-        .kb-key { 
-            background: white; border: 2px solid black; padding: 8px 4px; min-width: 30px; 
-            text-align: center; font-weight: bold; border-radius: 5px; cursor: pointer;
-            box-shadow: 0 2px 0 #000; font-size: 1rem;
-        }
-        .kb-key.wide { min-width: 60px; background: #bbb; }
-        .kb-key.toggle { background: var(--lego-yellow); min-width: 50px; }
-
-        .input-display { 
-            font-size: 1.4rem; font-weight: bold; color: var(--lego-blue); 
-            background: #fff; padding: 5px 15px; border-radius: 20px; border: 2px solid #000; margin: 5px;
-        }
-
-        .edit-row { display: flex; gap: 10px; margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 8px; border: 2px solid #000; }
-        .drop-zone { width: 120px; height: 100px; border: 3px dashed #666; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; position: relative; }
-        .edit-input { flex-grow: 1; padding: 15px; font-size: 1.1rem; border: 2px solid #000; }
-
-        .duel-container { display: flex; width: 100vw; flex: 1; overflow: hidden; }
-        .team-side { flex: 1; border: 1px solid #000; display: flex; flex-direction: column; align-items: center; padding: 5px; background: rgba(255,255,255,0.9); }
-        .scoreboard { background: var(--lego-black); color: var(--lego-yellow); padding: 2px 15px; border-radius: 20px; font-size: 1.2rem; }
+        textarea { width: 80%; height: 200px; font-family: sans-serif; font-size: 1rem; border: 4px solid black; }
+        #history-list { width: 80%; background: white; border: 3px solid black; padding: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="brick-bg" id="brick-container"></div>
-    <button id="global-back-btn" class="btn btn-yellow" style="position: fixed; top: 10px; left: 10px; z-index: 100; display:none;" onclick="goBack()">⬅ BACK</button>
+    <button class="btn btn-small" style="position:fixed; top:10px; left:10px; z-index:100" onclick="showScreen('menu-screen')">MENU</button>
 
     <div id="menu-screen" class="screen active">
         <h1 class="main-title">SENTENCE BUILDER</h1>
-        <button class="btn" onclick="openStyleSelect('practice')">PRACTICE</button>
-        <button class="btn btn-yellow" onclick="showScreen('setup-screen')">TEAM DUEL</button>
-        <button class="btn btn-red" onclick="refreshEditUI(); showScreen('edit-screen');">EDIT LIST</button>
-    </div>
-
-    <div id="setup-screen" class="screen">
-        <h2>TEAM SETUP</h2>
-        <div style="display:flex; gap: 10px;">
-            <div style="text-align:center;">
-                <input type="text" id="team-a-name" value="TEAM A" class="edit-input" style="width:100px;">
-                <p>Range: <input type="text" id="team-a-nums" value="1-20" style="width:50px;"></p>
-            </div>
-            <div style="text-align:center;">
-                <input type="text" id="team-b-name" value="TEAM B" class="edit-input" style="width:100px;">
-                <p>Range: <input type="text" id="team-b-nums" value="1-20" style="width:50px;"></p>
-            </div>
-        </div>
-        <button class="btn" onclick="openStyleSelect('duel')">CONTINUE</button>
+        <div id="load-msg" style="color:var(--lego-green); font-weight:bold; display:none;">BRICKS LOADED!</div>
+        <button class="btn btn-green" onclick="openModeSelect('practice')">PRACTICE</button>
+        <button class="btn btn-blue" onclick="openModeSelect('duel')">TEAM DUEL</button>
+        <button class="btn btn-yellow" onclick="showScreen('edit-screen')">EDIT LIST</button>
+        <button class="btn btn-red" onclick="showHistory()">HISTORY</button>
     </div>
 
     <div id="mode-screen" class="screen">
-        <h2>CHOOSE STYLE</h2>
-        <button class="btn" onclick="initGame('unscramble')">UNSCRAMBLE</button>
-        <button class="btn btn-yellow" onclick="initGame('wrong')">WHAT'S WRONG?</button>
+        <h2 class="main-title" style="font-size: 2.5rem;">SELECT MODE</h2>
+        <div class="game-picker">
+            <span>SENTENCE ORDER:</span>
+            <label><input type="radio" name="order-sel" value="normal" checked> Normal</label>
+            <label><input type="radio" name="order-sel" value="shuffle"> Shuffle</label>
+        </div>
+        <button class="btn" onclick="startSetup('unscramble')">UNSCRAMBLE</button>
+        <button class="btn btn-red" onclick="startSetup('spell')">SEARCH AND SPELL</button>
+        <button class="btn btn-yellow" onclick="startSetup('grammar')">WHAT'S WRONG?</button>
+    </div>
+
+    <div id="setup-screen" class="screen">
+        <h2 class="main-title" style="font-size: 2.5rem;">TEAM SETUP</h2>
+        <div style="display:flex; gap:20px;">
+            <div>
+                <h3>TEAM A</h3>
+                <input type="text" id="team-a-name" value="RED TEAM"><br>
+                <input type="text" id="team-a-range" value="1-20" style="width:60px">
+            </div>
+            <div>
+                <h3>TEAM B</h3>
+                <input type="text" id="team-b-name" value="BLUE TEAM"><br>
+                <input type="text" id="team-b-range" value="1-20" style="width:60px">
+            </div>
+        </div>
+        <button class="btn btn-green" onclick="confirmStart()">BUILD!</button>
     </div>
 
     <div id="game-screen" class="screen">
-        <div class="photo-holder" id="photo-p"></div>
-        <div id="sentence-container" class="sentence-area"></div>
-        <div id="pool-container" class="sentence-area"></div>
-        
-        <div id="keyboard-wrapper-p" style="width:100%; display:flex; flex-direction:column; align-items:center;">
-            <div id="input-display-p" class="input-display" style="display:none;">_</div>
-            <div id="keyboard-p" class="keyboard-container" style="display:none;"></div>
+        <div class="game-picker">
+            <span>Student:</span> <b id="num-p">-</b>
+            <button class="btn btn-small" onclick="pickStudent('p')">PICK</button>
+            <input type="range" min="0.5" max="1.5" step="0.1" value="1" oninput="adjustZoom(this.value)">
         </div>
-
-        <div style="display:flex; gap: 10px; margin-top: 5px;">
-            <button class="btn btn-yellow" onclick="speakText()">🔊 LISTEN</button>
-            <button id="next-btn-p" class="btn" style="display:none;" onclick="nextRound()">NEXT ➔</button>
-        </div>
+        <div id="p-display" class="display-area"></div>
+        <div id="p-interaction"></div>
+        <button class="btn btn-yellow" onclick="speakSentence()">🔊 LISTEN</button>
+        <button id="next-p" class="btn btn-green" style="display:none" onclick="nextRound()">NEXT ➔</button>
     </div>
 
-    <div id="duel-screen" class="screen" style="padding:0;">
+    <div id="duel-screen" class="screen" style="padding:0">
         <div class="duel-container">
-            <div class="team-side">
-                <div class="scoreboard" id="score-a">0</div>
-                <div class="photo-holder" id="photo-a" style="height:20vh;"></div>
-                <div id="area-a" class="sentence-area"></div>
-                <div id="pool-a" class="sentence-area"></div>
-                <div id="input-display-a" class="input-display" style="display:none;">_</div>
-                <div id="keyboard-a" class="keyboard-container" style="display:none;"></div>
+            <div class="team-side" style="background:#ffebee">
+                <div id="score-l" class="scoreboard">0</div>
+                <div class="game-picker"><b id="name-l">RED</b>: <span id="num-l">-</span> <button class="btn btn-small" onclick="pickStudent('l')">PICK</button></div>
+                <div id="l-display" class="display-area" style="font-size:1.5rem"></div>
+                <div id="l-interaction"></div>
             </div>
-            <div class="team-side">
-                <div class="scoreboard" id="score-b">0</div>
-                <div class="photo-holder" id="photo-b" style="height:20vh;"></div>
-                <div id="area-b" class="sentence-area"></div>
-                <div id="pool-b" class="sentence-area"></div>
-                <div id="input-display-b" class="input-display" style="display:none;">_</div>
-                <div id="keyboard-b" class="keyboard-container" style="display:none;"></div>
+            <div class="team-side" style="background:#e3f2fd">
+                <div id="score-r" class="scoreboard">0</div>
+                <div class="game-picker"><b id="name-r">BLUE</b>: <span id="num-r">-</span> <button class="btn btn-small" onclick="pickStudent('r')">PICK</button></div>
+                <div id="r-display" class="display-area" style="font-size:1.5rem"></div>
+                <div id="r-interaction"></div>
             </div>
         </div>
-        <button id="next-btn-duel" class="btn btn-yellow" style="display:none; position:absolute; bottom:80px;" onclick="nextRound()">NEXT ROUND ➔</button>
+        <button class="btn btn-yellow btn-small" style="position:fixed; bottom:70px" onclick="speakSentence()">🔊 LISTEN</button>
+        <button id="next-duel" class="btn btn-green" style="position:fixed; bottom:10px; display:none" onclick="nextRound()">NEXT ROUND ➔</button>
     </div>
 
     <div id="edit-screen" class="screen">
-        <h3>EDIT LESSON</h3>
-        <p style="font-size:0.8rem;">Use: <b>Wrong/Right</b> (e.g. "happpy/happy") for correction mode.</p>
-        <div id="edit-list-container" style="width: 100%; overflow-y: auto; flex:1;"></div>
-        <div style="padding:10px;">
-            <button class="btn" onclick="addNewRow()">+ ADD</button>
-            <button class="btn btn-yellow" onclick="saveAndCopy()">SAVE & COPY LINK</button>
-        </div>
+        <h2>EDIT SENTENCES</h2>
+        <p>Format: Sentence | Target Word (for Spell/Grammar)</p>
+        <textarea id="word-input">
+The quick brown fox jumps over the dog. | jumps
+He goes to school every day. | goes
+I am eating a giant red apple. | eating
+She does not like pizza. | pizza</textarea>
+        <button class="btn btn-green" onclick="saveList()">SAVE & LINK</button>
+        <div id="link-box" style="word-break:break-all; padding:10px; background:#eee; display:none"></div>
+    </div>
+
+    <div id="history-screen" class="screen">
+        <h2>HISTORY</h2>
+        <div id="history-list"></div>
     </div>
 
     <script>
-        let gameList = [{sentence: "The big dog runs fast", img: ""}, {sentence: "He is happpy/happy", img: ""}];
-        let currentIndex = 0;
-        let currentGameMode = 'practice'; // 'practice' or 'duel'
-        let currentGameStyle = 'unscramble'; // 'unscramble' or 'wrong'
-        let scoreA = 0, scoreB = 0;
-        let roundActive = true;
-        let screenHistory = ['menu-screen'];
-        
-        let currentTyped = { p: "", a: "", b: "" };
-        let capsState = { p: true, a: true, b: true };
-        let activeTargetWord = { p: null, a: null, b: null };
+        let sentences = [];
+        let index = 0;
+        let playType = 'practice'; // practice vs duel
+        let gameMode = 'unscramble'; // unscramble, spell, grammar
+        let scores = { A: 0, B: 0 };
+        let isWaiting = false;
 
-        const qwerty = [["Q","W","E","R","T","Y","U","I","O","P"], ["A","S","D","F","G","H","J","K","L"], ["Z","X","C","V","B","N","M"]];
-
+        // --- Initialization ---
         window.onload = () => {
-            createBricks();
             const params = new URLSearchParams(window.location.search);
-            if(params.get('d')) gameList = JSON.parse(atob(params.get('d')));
+            const data = params.get('w');
+            if(data) {
+                sentences = JSON.parse(atob(data));
+                document.getElementById('load-msg').style.display = 'block';
+                document.getElementById('word-input').value = sentences.map(s => s.full + (s.target ? " | " + s.target : "")).join('\n');
+            }
+            createFloatingBricks();
         };
 
+        function createFloatingBricks() {
+            const colors = ['var(--lego-red)', 'var(--lego-blue)', 'var(--lego-yellow)', 'var(--lego-green)'];
+            for(let i=0; i<6; i++){
+                let b = document.createElement('div');
+                b.className = 'lego-brick';
+                b.style.background = colors[i % 4];
+                b.style.top = (Math.random() * 80) + "%";
+                b.style.animationDelay = (i * 2) + "s";
+                document.body.appendChild(b);
+            }
+        }
+
+        // --- Navigation & Logic ---
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-            if (id !== screenHistory[screenHistory.length-1]) screenHistory.push(id);
-            document.getElementById('global-back-btn').style.display = (id === 'menu-screen') ? 'none' : 'block';
         }
 
-        function goBack() {
-            if (screenHistory.length > 1) {
-                screenHistory.pop();
-                showScreen(screenHistory.pop());
-            }
+        function openModeSelect(type) {
+            playType = type;
+            showScreen('mode-screen');
         }
 
-        function openStyleSelect(mode) { currentGameMode = mode; showScreen('mode-screen'); }
-
-        function initGame(style) {
-            currentGameStyle = style;
-            currentIndex = 0; scoreA = 0; scoreB = 0;
-            loadCurrentRound();
+        function startSetup(mode) {
+            gameMode = mode;
+            if(playType === 'duel') showScreen('setup-screen');
+            else confirmStart();
         }
 
-        function loadCurrentRound() {
-            roundActive = true;
-            currentTyped = { p: "", a: "", b: "" };
-            activeTargetWord = { p: null, a: null, b: null };
+        function confirmStart() {
+            index = 0; scores = { A:0, B:0 };
+            const order = document.querySelector('input[name="order-sel"]:checked').value;
             
-            document.getElementById('next-btn-p').style.display = 'none';
-            document.getElementById('next-btn-duel').style.display = 'none';
-
-            if(currentGameMode === 'practice') {
-                showScreen('game-screen');
-                setupArea('sentence-container', 'pool-container', 'photo-p', 'p');
-            } else {
-                showScreen('duel-screen');
-                setupArea('area-a', 'pool-a', 'photo-a', 'a');
-                setupArea('area-b', 'pool-b', 'photo-b', 'b');
-                updateScores();
-            }
-        }
-
-        function setupArea(targetId, poolId, photoId, side) {
-            const target = document.getElementById(targetId);
-            const pool = document.getElementById(poolId);
-            const item = gameList[currentIndex];
-            
-            document.getElementById(photoId).innerHTML = item.img ? `<img src="${item.img}">` : "🖼️";
-            target.innerHTML = ''; pool.innerHTML = '';
-            
-            // Toggle Keyboard visibility based on style
-            const kb = document.getElementById('keyboard-' + side);
-            const disp = document.getElementById('input-display-' + side);
-            kb.style.display = (currentGameStyle === 'wrong') ? 'block' : 'none';
-            disp.style.display = (currentGameStyle === 'wrong') ? 'block' : 'none';
-            if(currentGameStyle === 'wrong') renderKeyboard(side);
-
-            let rawWords = item.sentence.split(' ');
-
-            if(currentGameStyle === 'unscramble') {
-                let shuffled = [...rawWords].sort(() => Math.random() - 0.5);
-                shuffled.forEach(w => {
-                    const tile = createTile(w, side, true);
-                    tile.onclick = () => {
-                        if(!roundActive) return;
-                        if(tile.parentElement === pool) target.appendChild(tile);
-                        else pool.appendChild(tile);
-                        checkUnscrambleWin(target, rawWords, side);
-                    };
-                    pool.appendChild(tile);
-                });
-            } else {
-                // WHAT'S WRONG MODE logic
-                rawWords.forEach(wordData => {
-                    const isTrap = wordData.includes('/');
-                    const displayWord = isTrap ? wordData.split('/')[0] : wordData;
-                    const correctWord = isTrap ? wordData.split('/')[1] : wordData;
-                    
-                    const tile = createTile(displayWord, side, false);
-                    tile.onclick = () => {
-                        if(!roundActive || activeTargetWord[side]) return;
-                        if(isTrap) {
-                            tile.classList.add('editing');
-                            tile.innerText = "...";
-                            activeTargetWord[side] = { tile, correct: correctWord };
-                        } else {
-                            tile.classList.add('shake');
-                            setTimeout(() => tile.classList.remove('shake'), 400);
-                        }
-                    };
-                    target.appendChild(tile);
-                });
-            }
-        }
-
-        function createTile(text, side, isUnscramble) {
-            const div = document.createElement('div');
-            div.className = 'word-tile';
-            div.innerText = text;
-            return div;
-        }
-
-        function renderKeyboard(side) {
-            const container = document.getElementById('keyboard-' + side);
-            container.innerHTML = '';
-            qwerty.forEach(row => {
-                const div = document.createElement('div');
-                div.className = 'kb-row';
-                row.forEach(key => {
-                    const k = document.createElement('div');
-                    k.className = 'kb-key';
-                    k.innerText = capsState[side] ? key : key.toLowerCase();
-                    k.onclick = () => handleInput(k.innerText, side);
-                    div.appendChild(k);
-                });
-                container.appendChild(div);
+            // Process sentence objects
+            const raw = document.getElementById('word-input').value.split('\n').filter(l => l.trim());
+            sentences = raw.map(line => {
+                let parts = line.split('|');
+                return { full: parts[0].trim(), target: parts[1] ? parts[1].trim() : "" };
             });
 
-            const bottomRow = document.createElement('div');
-            bottomRow.className = 'kb-row';
+            if(order === 'shuffle') sentences.sort(() => Math.random() - 0.5);
             
-            const shift = document.createElement('div');
-            shift.className = 'kb-key toggle';
-            shift.innerText = "CAPS";
-            shift.onclick = () => { capsState[side] = !capsState[side]; renderKeyboard(side); };
-
-            const space = document.createElement('div');
-            space.className = 'kb-key wide';
-            space.innerText = "SPACE";
-            space.onclick = () => handleInput(" ", side);
-
-            const del = document.createElement('div');
-            del.className = 'kb-key wide';
-            del.innerText = "DEL";
-            del.onclick = () => handleInput("DEL", side);
-
-            bottomRow.append(shift, space, del);
-            container.appendChild(bottomRow);
-        }
-
-        function handleInput(char, side) {
-            if(!roundActive || !activeTargetWord[side]) return;
-
-            if(char === "DEL") currentTyped[side] = currentTyped[side].slice(0, -1);
-            else currentTyped[side] += char;
-
-            document.getElementById('input-display-' + side).innerText = currentTyped[side] + "_";
-
-            if(currentTyped[side] === activeTargetWord[side].correct) {
-                const tile = activeTargetWord[side].tile;
-                tile.innerText = currentTyped[side];
-                tile.classList.remove('editing');
-                tile.classList.add('correct');
-                endRound(side.toUpperCase());
+            if(playType === 'duel') {
+                document.getElementById('name-l').innerText = document.getElementById('team-a-name').value;
+                document.getElementById('name-r').innerText = document.getElementById('team-b-name').value;
+                document.getElementById('score-l').innerText = "0";
+                document.getElementById('score-r').innerText = "0";
+                showScreen('duel-screen');
+                renderRound('l'); renderRound('r');
+            } else {
+                showScreen('game-screen');
+                renderRound('p');
             }
         }
 
-        function checkUnscrambleWin(container, targetArr, side) {
-            const current = Array.from(container.children).map(t => t.innerText);
-            if(current.join(' ') === targetArr.join(' ')) {
-                Array.from(container.children).forEach(t => t.classList.add('correct'));
-                endRound(side.toUpperCase());
+        function renderRound(side) {
+            isWaiting = false;
+            const container = document.getElementById(side + '-interaction');
+            const display = document.getElementById(side + '-display');
+            container.innerHTML = '';
+            display.innerText = '';
+            display.classList.remove('tile-empty');
+
+            const current = sentences[index];
+
+            if(gameMode === 'unscramble') {
+                display.classList.add('tile-empty');
+                const words = current.full.split(' ').sort(() => Math.random() - 0.5);
+                words.forEach(w => {
+                    const t = document.createElement('div');
+                    t.className = 'tile';
+                    t.innerText = w;
+                    t.onclick = () => {
+                        if(isWaiting) return;
+                        const space = display.innerText === '' ? '' : ' ';
+                        display.innerText += space + w;
+                        t.style.display = 'none';
+                        if(display.innerText.trim() === current.full) win(side);
+                    };
+                    container.appendChild(t);
+                });
+                const reset = document.createElement('button');
+                reset.className = "btn btn-small btn-red"; reset.innerText = "RESET";
+                reset.onclick = () => renderRound(side);
+                container.appendChild(document.createElement('br'));
+                container.appendChild(reset);
+            } 
+            else if(gameMode === 'spell' || gameMode === 'grammar') {
+                let promptText = current.full;
+                if(gameMode === 'spell') {
+                    // Create minor spelling error in target word
+                    let target = current.target || current.full.split(' ')[1];
+                    let wrong = target.length > 3 ? target.slice(0, -1) : target + "z";
+                    promptText = current.full.replace(target, wrong);
+                    display.dataset.answer = target;
+                } else {
+                    // Grammar error (Client provides manually via | )
+                    display.dataset.answer = current.target;
+                }
+                display.innerText = promptText;
+                display.style.color = "var(--lego-red)";
+                
+                const inputArea = document.createElement('div');
+                inputArea.id = side + "-input-val";
+                inputArea.style.fontSize = "1.5rem"; inputArea.style.margin = "10px";
+                inputArea.innerText = "_";
+                container.appendChild(inputArea);
+                renderKeyboard(container, side);
             }
         }
 
-        function endRound(winner) {
-            if(!roundActive) return;
-            roundActive = false;
-            if(winner === 'A' || winner === 'P') scoreA++;
-            if(winner === 'B') scoreB++;
+        function renderKeyboard(target, side) {
+            const kb = document.createElement('div'); kb.className = "keyboard";
+            const rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM "];
+            rows.forEach(row => {
+                const rDiv = document.createElement('div'); rDiv.className = "kb-row";
+                row.split('').forEach(char => {
+                    const k = document.createElement('div'); k.className = "key";
+                    k.innerText = char === " " ? "SPACE" : char;
+                    k.style.width = char === " " ? "100px" : "45px";
+                    k.onclick = () => {
+                        const out = document.getElementById(side + "-input-val");
+                        if(isWaiting) return;
+                        if(out.innerText === "_") out.innerText = "";
+                        out.innerText += char;
+                        if(out.innerText.trim().toLowerCase() === document.getElementById(side + "-display").dataset.answer.toLowerCase()) {
+                            win(side);
+                        }
+                    };
+                    rDiv.appendChild(k);
+                });
+                kb.appendChild(rDiv);
+            });
+            const del = document.createElement('div'); del.className = "key"; del.innerText = "DEL";
+            del.onclick = () => document.getElementById(side + "-input-val").innerText = "_";
+            kb.lastChild.appendChild(del);
+            target.appendChild(kb);
+        }
+
+        function win(side) {
+            isWaiting = true;
+            document.getElementById(side + '-display').style.color = "var(--lego-green)";
+            document.getElementById(side + '-display').innerText = sentences[index].full;
             
-            updateScores();
-            document.getElementById('next-btn-p').style.display = 'block';
-            document.getElementById('next-btn-duel').style.display = 'block';
+            if(playType === 'duel') {
+                if(side === 'l') scores.A++; else scores.B++;
+                document.getElementById('score-l').innerText = scores.A;
+                document.getElementById('score-r').innerText = scores.B;
+                document.getElementById('next-duel').style.display = 'block';
+            } else {
+                document.getElementById('next-p').style.display = 'block';
+            }
+            speakSentence();
         }
 
         function nextRound() {
-            currentIndex++;
-            if(currentIndex >= gameList.length) {
-                alert("Wonderful! Game Finished.");
+            index++;
+            if(index >= sentences.length) {
+                alert("GAME OVER!\nFinal: " + scores.A + " to " + scores.B);
                 showScreen('menu-screen');
-            } else {
-                loadCurrentRound();
+                return;
             }
+            document.getElementById('next-p').style.display = 'none';
+            document.getElementById('next-duel').style.display = 'none';
+            if(playType === 'duel') { renderRound('l'); renderRound('r'); }
+            else renderRound('p');
         }
 
-        function updateScores() {
-            if(document.getElementById('score-a')) document.getElementById('score-a').innerText = scoreA;
-            if(document.getElementById('score-b')) document.getElementById('score-b').innerText = scoreB;
+        function speakSentence() {
+            const u = new SpeechSynthesisUtterance(sentences[index].full);
+            u.lang = 'en-US'; window.speechSynthesis.speak(u);
         }
 
-        function speakText() {
-            let msg = gameList[currentIndex].sentence.replace(/\//g, ' ');
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(msg));
-        }
+        function adjustZoom(v) { document.documentElement.style.setProperty('--game-scale', v); }
 
-        function refreshEditUI() {
-            const container = document.getElementById('edit-list-container');
-            container.innerHTML = '';
-            gameList.forEach((item, idx) => {
-                const row = document.createElement('div');
-                row.className = 'edit-row';
-                row.innerHTML = `
-                    <div class="drop-zone" id="drop-${idx}">${item.img ? `<img src="${item.img}">` : 'Drop Image'}</div>
-                    <input type="text" class="edit-input" value="${item.sentence}" onchange="gameList[${idx}].sentence=this.value">
-                    <button class="btn btn-red" onclick="gameList.splice(${idx},1); refreshEditUI();">X</button>`;
-                container.appendChild(row);
-                setupDropZone(document.getElementById(`drop-${idx}`), idx);
+        function pickStudent(side) {
+            let range = (side === 'p') ? "1-20" : (side === 'l' ? document.getElementById('team-a-range').value : document.getElementById('team-b-range').value);
+            let nums = [];
+            range.split(',').forEach(r => {
+                if(r.includes('-')) {
+                    let p = r.split('-');
+                    for(let i=parseInt(p[0]); i<=parseInt(p[1]); i++) nums.push(i);
+                } else nums.push(parseInt(r));
             });
+            document.getElementById('num-' + side).innerText = nums[Math.floor(Math.random()*nums.length)];
         }
 
-        function setupDropZone(zone, idx) {
-            zone.ondragover = (e) => e.preventDefault();
-            zone.ondrop = (e) => {
-                e.preventDefault();
-                if(e.dataTransfer.files.length) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => { gameList[idx].img = ev.target.result; refreshEditUI(); };
-                    reader.readAsDataURL(e.dataTransfer.files[0]);
-                }
-            };
-        }
-
-        function addNewRow() { gameList.push({sentence: "", img: ""}); refreshEditUI(); }
-
-        function saveAndCopy() {
-            const data = btoa(JSON.stringify(gameList));
-            const url = window.location.origin + window.location.pathname + "?d=" + data;
+        function saveList() {
+            const list = document.getElementById('word-input').value.split('\n').filter(l => l.trim()).map(line => {
+                let parts = line.split('|');
+                return { full: parts[0].trim(), target: parts[1] ? parts[1].trim() : "" };
+            });
+            const encoded = btoa(JSON.stringify(list));
+            const url = window.location.href.split('?')[0] + "?w=" + encoded;
+            const lb = document.getElementById('link-box');
+            lb.innerHTML = `<b>COPY THIS:</b><br>${url}`;
+            lb.style.display = 'block';
             navigator.clipboard.writeText(url);
-            alert("Lesson Link Copied to Clipboard!");
+            alert("Game Link Copied!");
         }
 
-        function createBricks() {
-            const colors = ['#D11013', '#0055BF', '#F7D117', '#FFFFFF'];
-            for(let i=0; i<15; i++) {
-                const b = document.createElement('div');
-                b.className = 'lego-brick';
-                b.style.left = Math.random() * 95 + '%';
-                b.style.backgroundColor = colors[Math.floor(Math.random()*colors.length)];
-                b.style.animationDelay = (Math.random() * 8) + 's';
-                document.getElementById('brick-container').appendChild(b);
-            }
+        function showHistory() {
+            showScreen('history-screen');
+            // Basic history logic can be added here if needed
         }
     </script>
 </body>
