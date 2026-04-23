@@ -28,7 +28,6 @@
             touch-action: manipulation;
         }
 
-        /* Floating LEGO Bricks Animation */
         .lego-brick {
             position: absolute; width: 60px; height: 30px; border-radius: 4px;
             opacity: 0.7; z-index: 0; animation: float 10s infinite linear;
@@ -62,7 +61,7 @@
             box-shadow: 0 8px 0 var(--lego-black);
             position: relative;
             transition: all 0.1s;
-            width: 280px; /* Standard width for menu buttons */
+            width: 280px;
         }
         .btn:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--lego-black); }
         .btn-red { background-color: var(--lego-red); }
@@ -70,7 +69,6 @@
         .btn-yellow { background-color: var(--lego-yellow); color: black; }
         .btn-small { padding: 8px 15px; font-size: 1rem; box-shadow: 0 4px 0 var(--lego-black); width: auto; }
 
-        /* (2) GAME TITLE STYLING */
         .title-container { text-align: center; margin-bottom: 30px; }
         .main-title { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 900; color: var(--lego-red); -webkit-text-stroke: 2px black; text-shadow: 4px 4px 0 var(--lego-yellow); margin: 0; line-height: 1; }
         .sub-title { font-size: 1.5rem; color: var(--lego-black); margin: 0; font-weight: bold; }
@@ -103,7 +101,7 @@
             min-width: 45px; height: 55px; margin: 3px; background: #fff;
             border: 3px solid var(--lego-black); border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
-            font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #888;
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #888; padding: 0 10px;
         }
         .key:active { transform: translateY(2px); box-shadow: 0 2px 0 #888; }
 
@@ -112,7 +110,11 @@
         .duel-container { display: flex; width: 100vw; height: 75vh; }
         .team-side { flex: 1; display: flex; flex-direction: column; align-items: center; border: 2px solid var(--lego-black); padding: 10px; }
         
-        textarea { width: 80%; height: 200px; font-family: sans-serif; font-size: 1rem; border: 4px solid black; }
+        .edit-table { width: 90%; border-collapse: collapse; background: white; margin-bottom: 20px; }
+        .edit-table td { border: 2px solid black; padding: 10px; }
+        .edit-table input { width: 95%; border: none; font-size: 1.1rem; padding: 5px; }
+        .row-label { background: var(--lego-grey); font-weight: bold; width: 150px; }
+        
         #history-list { width: 80%; background: white; border: 3px solid black; padding: 10px; min-height: 100px; }
     </style>
 </head>
@@ -165,6 +167,7 @@
 
     <div id="game-screen" class="screen">
         <div class="game-picker">
+            <span>Range: </span><input type="text" id="p-range" value="1-20" style="width:60px">
             <span>Student:</span> <b id="num-p">-</b>
             <button class="btn btn-small" onclick="pickStudent('p')">PICK</button>
             <input type="range" min="0.5" max="1.5" step="0.1" value="1" oninput="adjustZoom(this.value)">
@@ -196,12 +199,16 @@
 
     <div id="edit-screen" class="screen">
         <h2>EDIT SENTENCES</h2>
-        <p>Format: Sentence | Target Word (for Spell/Grammar)</p>
-        <textarea id="word-input">
-The quick brown fox jumps over the dog. | jumps
-He goes to school every day. | goes
-I am eating a giant red apple. | eating
-She does not like pizza. | pizza</textarea>
+        <table class="edit-table">
+            <tr><td class="row-label">SENTENCE</td><td><input type="text" id="edit-sentence" placeholder="The quick brown fox jumps over the dog."></td></tr>
+            <tr><td class="row-label">SPELLING WORD</td><td><input type="text" id="edit-spell" placeholder="jumps (word to spell)"></td></tr>
+            <tr><td class="row-label">GRAMMAR WORD</td><td><input type="text" id="edit-grammar" placeholder="goes (incorrect word that appears)"></td></tr>
+        </table>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-small btn-green" onclick="addToList()">+ ADD TO LIST</button>
+            <button class="btn btn-small btn-red" onclick="clearEditor()">CLEAR ALL</button>
+        </div>
+        <textarea id="word-input" style="width:90%; height:150px; margin-top:20px;"></textarea>
         <button class="btn btn-green" onclick="saveList()">SAVE & GENERATE LINK</button>
         <div id="link-box" style="word-break:break-all; padding:10px; background:#fff; border: 2px solid black; margin-top: 10px; display:none; max-width: 80%;"></div>
     </div>
@@ -219,8 +226,9 @@ She does not like pizza. | pizza</textarea>
         let gameMode = 'unscramble'; 
         let scores = { A: 0, B: 0 };
         let isWaiting = false;
+        let isShift = true;
+        let kbLayout = 'ABC';
 
-        // --- Initialization ---
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             const data = params.get('w');
@@ -228,12 +236,35 @@ She does not like pizza. | pizza</textarea>
                 try {
                     sentences = JSON.parse(atob(data));
                     document.getElementById('load-msg').style.display = 'block';
-                    document.getElementById('word-input').value = sentences.map(s => s.full + (s.target ? " | " + s.target : "")).join('\n');
+                    syncTextArea();
                 } catch(e) { console.error("Error loading data"); }
             }
             createFloatingBricks();
             updateHistoryUI();
         };
+
+        function addToList() {
+            const s = document.getElementById('edit-sentence').value;
+            const sp = document.getElementById('edit-spell').value;
+            const g = document.getElementById('edit-grammar').value;
+            if(!s) return;
+            const entry = `${s} | ${sp} | ${g}`;
+            const area = document.getElementById('word-input');
+            area.value += (area.value ? "\n" : "") + entry;
+            clearEditorInputs();
+        }
+
+        function clearEditorInputs() {
+            document.getElementById('edit-sentence').value = "";
+            document.getElementById('edit-spell').value = "";
+            document.getElementById('edit-grammar').value = "";
+        }
+
+        function clearEditor() { if(confirm("Clear everything?")) document.getElementById('word-input').value = ""; }
+
+        function syncTextArea() {
+            document.getElementById('word-input').value = sentences.map(s => `${s.full} | ${s.targetSpell || ""} | ${s.targetGrammar || ""}`).join('\n');
+        }
 
         function createFloatingBricks() {
             const colors = ['var(--lego-red)', 'var(--lego-blue)', 'var(--lego-yellow)', 'var(--lego-green)'];
@@ -247,7 +278,6 @@ She does not like pizza. | pizza</textarea>
             }
         }
 
-        // --- Navigation ---
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -271,7 +301,11 @@ She does not like pizza. | pizza</textarea>
             
             sentences = raw.map(line => {
                 let parts = line.split('|');
-                return { full: parts[0].trim(), target: parts[1] ? parts[1].trim() : "" };
+                return { 
+                    full: parts[0]?.trim() || "", 
+                    targetSpell: parts[1]?.trim() || "",
+                    targetGrammar: parts[2]?.trim() || ""
+                };
             });
 
             if(order === 'shuffle') sentences.sort(() => Math.random() - 0.5);
@@ -289,7 +323,6 @@ She does not like pizza. | pizza</textarea>
             }
         }
 
-        // --- Game Logic ---
         function renderRound(side) {
             isWaiting = false;
             const container = document.getElementById(side + '-interaction');
@@ -305,12 +338,10 @@ She does not like pizza. | pizza</textarea>
                 const words = current.full.split(' ').sort(() => Math.random() - 0.5);
                 words.forEach(w => {
                     const t = document.createElement('div');
-                    t.className = 'tile';
-                    t.innerText = w;
+                    t.className = 'tile'; t.innerText = w;
                     t.onclick = () => {
                         if(isWaiting) return;
-                        const space = display.innerText === '' ? '' : ' ';
-                        display.innerText += space + w;
+                        display.innerText += (display.innerText === '' ? '' : ' ') + w;
                         t.style.display = 'none';
                         if(display.innerText.trim() === current.full) win(side);
                     };
@@ -322,15 +353,17 @@ She does not like pizza. | pizza</textarea>
                 container.appendChild(document.createElement('br'));
                 container.appendChild(reset);
             } 
-            else if(gameMode === 'spell' || gameMode === 'grammar') {
+            else {
                 let promptText = current.full;
                 if(gameMode === 'spell') {
-                    let target = current.target || current.full.split(' ')[0];
-                    let wrong = target.length > 3 ? target.slice(0, -1) : target + "x";
+                    let target = current.targetSpell || current.full.split(' ')[0];
                     promptText = current.full.replace(target, "_____");
                     display.dataset.answer = target;
                 } else {
-                    display.dataset.answer = current.target;
+                    let wrongWord = current.targetGrammar || "WRONG";
+                    let correctWord = current.targetSpell || current.full.split(' ')[0];
+                    promptText = current.full.replace(correctWord, wrongWord);
+                    display.dataset.answer = correctWord;
                 }
                 display.innerText = promptText;
                 display.style.color = "var(--lego-red)";
@@ -345,38 +378,65 @@ She does not like pizza. | pizza</textarea>
         }
 
         function renderKeyboard(target, side) {
-            const kb = document.createElement('div'); kb.className = "keyboard";
-            const rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM "];
-            rows.forEach(row => {
+            let kbWrap = target.querySelector('.keyboard');
+            if(!kbWrap) {
+                kbWrap = document.createElement('div');
+                kbWrap.className = "keyboard";
+                target.appendChild(kbWrap);
+            }
+            kbWrap.innerHTML = '';
+
+            let rows = [];
+            if(kbLayout === 'ABC') {
+                rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+            } else {
+                rows = ["1234567890", "!@#$%^&*()", "?.,'\"-+=:/"];
+            }
+
+            rows.forEach((row, i) => {
                 const rDiv = document.createElement('div'); rDiv.className = "kb-row";
                 row.split('').forEach(char => {
                     const k = document.createElement('div'); k.className = "key";
-                    k.innerText = char === " " ? "SPACE" : char;
-                    k.style.width = char === " " ? "100px" : "45px";
+                    let displayChar = isShift ? char.toUpperCase() : char.toLowerCase();
+                    k.innerText = displayChar;
                     k.onclick = () => {
                         const out = document.getElementById(side + "-input-val");
                         if(isWaiting) return;
                         if(out.innerText === "_") out.innerText = "";
-                        out.innerText += char;
-                        if(out.innerText.trim().toLowerCase() === document.getElementById(side + "-display").dataset.answer.toLowerCase()) {
-                            win(side);
-                        }
+                        out.innerText += displayChar;
+                        if(out.innerText.trim().toLowerCase() === document.getElementById(side + "-display").dataset.answer.toLowerCase()) win(side);
                     };
                     rDiv.appendChild(k);
                 });
-                kb.appendChild(rDiv);
+                kbWrap.appendChild(rDiv);
             });
+
+            // Fourth Row
+            const r4 = document.createElement('div'); r4.className = "kb-row";
+            
+            const shift = document.createElement('div'); shift.className = "key"; shift.innerText = "SHIFT";
+            shift.onclick = () => { isShift = !isShift; renderKeyboard(target, side); };
+            
+            const space = document.createElement('div'); space.className = "key"; space.innerText = "SPACE"; space.style.width = "100px";
+            space.onclick = () => { document.getElementById(side + "-input-val").innerText += " "; };
+
             const del = document.createElement('div'); del.className = "key"; del.innerText = "DEL";
-            del.onclick = () => document.getElementById(side + "-input-val").innerText = "_";
-            kb.lastChild.appendChild(del);
-            target.appendChild(kb);
+            del.onclick = () => {
+                let out = document.getElementById(side + "-input-val");
+                out.innerText = out.innerText.length > 1 ? out.innerText.slice(0, -1) : "_";
+            };
+
+            const toggle = document.createElement('div'); toggle.className = "key"; toggle.innerText = kbLayout === 'ABC' ? "123" : "ABC";
+            toggle.onclick = () => { kbLayout = (kbLayout === 'ABC' ? '123' : 'ABC'); renderKeyboard(target, side); };
+
+            r4.appendChild(shift); r4.appendChild(space); r4.appendChild(del); r4.appendChild(toggle);
+            kbWrap.appendChild(r4);
         }
 
         function win(side) {
             isWaiting = true;
             document.getElementById(side + '-display').style.color = "var(--lego-green)";
             document.getElementById(side + '-display').innerText = sentences[index].full;
-            
             if(playType === 'duel') {
                 if(side === 'l') scores.A++; else scores.B++;
                 document.getElementById('score-l').innerText = scores.A;
@@ -391,9 +451,8 @@ She does not like pizza. | pizza</textarea>
         function nextRound() {
             index++;
             if(index >= sentences.length) {
-                alert("GAME OVER!\nFinal: " + scores.A + " to " + scores.B);
-                showScreen('menu-screen');
-                return;
+                alert("GAME OVER!\nFinal Score: " + scores.A + " to " + scores.B);
+                showScreen('menu-screen'); return;
             }
             document.getElementById('next-p').style.display = 'none';
             document.getElementById('next-duel').style.display = 'none';
@@ -409,7 +468,7 @@ She does not like pizza. | pizza</textarea>
         function adjustZoom(v) { document.documentElement.style.setProperty('--game-scale', v); }
 
         function pickStudent(side) {
-            let rangeInput = (side === 'p') ? "1-20" : (side === 'l' ? document.getElementById('team-a-range').value : document.getElementById('team-b-range').value);
+            let rangeInput = (side === 'p') ? document.getElementById('p-range').value : (side === 'l' ? document.getElementById('team-a-range').value : document.getElementById('team-b-range').value);
             let nums = [];
             rangeInput.split(',').forEach(r => {
                 if(r.includes('-')) {
@@ -420,53 +479,36 @@ She does not like pizza. | pizza</textarea>
             document.getElementById('num-' + side).innerText = nums[Math.floor(Math.random()*nums.length)];
         }
 
-        // --- History & Link Features ---
         function saveList() {
-            const list = document.getElementById('word-input').value.split('\n').filter(l => l.trim()).map(line => {
+            const raw = document.getElementById('word-input').value.split('\n').filter(l => l.trim());
+            const list = raw.map(line => {
                 let parts = line.split('|');
-                return { full: parts[0].trim(), target: parts[1] ? parts[1].trim() : "" };
+                return { full: parts[0]?.trim() || "", targetSpell: parts[1]?.trim() || "", targetGrammar: parts[2]?.trim() || "" };
             });
             const encoded = btoa(JSON.stringify(list));
             const url = window.location.href.split('?')[0] + "?w=" + encoded;
-            
             const lb = document.getElementById('link-box');
             lb.innerHTML = `<b>COPY THIS LINK:</b><br><small>${url}</small>`;
             lb.style.display = 'block';
-            
-            // Save to history
             let history = JSON.parse(localStorage.getItem('sentence_history') || "[]");
             history.unshift({ date: new Date().toLocaleString(), url: url });
             localStorage.setItem('sentence_history', JSON.stringify(history.slice(0, 10)));
-            
             navigator.clipboard.writeText(url);
-            alert("Game Link Copied to Clipboard!");
+            alert("Game Link Copied!");
             updateHistoryUI();
         }
 
         function updateHistoryUI() {
             const list = JSON.parse(localStorage.getItem('sentence_history') || "[]");
             const container = document.getElementById('history-list');
-            if(list.length === 0) {
-                container.innerHTML = "No history yet.";
-                return;
-            }
-            container.innerHTML = list.map(item => 
+            container.innerHTML = list.length === 0 ? "No history yet." : list.map(item => 
                 `<div style="margin-bottom:10px; border-bottom:1px solid #ccc; padding:5px;">
-                    <b>${item.date}</b><br>
-                    <a href="${item.url}" style="font-size:10px; color:blue; word-break:break-all;">${item.url}</a>
-                </div>`
-            ).join('');
+                    <b>${item.date}</b><br><a href="${item.url}" style="font-size:10px; color:blue; word-break:break-all;">${item.url}</a>
+                </div>`).join('');
         }
 
-        function showHistory() {
-            updateHistoryUI();
-            showScreen('history-screen');
-        }
-
-        function clearHistory() {
-            localStorage.removeItem('sentence_history');
-            updateHistoryUI();
-        }
+        function showHistory() { updateHistoryUI(); showScreen('history-screen'); }
+        function clearHistory() { localStorage.removeItem('sentence_history'); updateHistoryUI(); }
     </script>
 </body>
 </html>
