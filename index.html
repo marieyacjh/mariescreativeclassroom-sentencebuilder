@@ -29,6 +29,16 @@
             touch-action: manipulation;
         }
 
+        /* Fix: Apply zoom scale to the main container */
+        #game-container {
+            transform: scale(var(--game-scale));
+            transform-origin: top center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .lego-brick {
             position: absolute; width: 60px; height: 30px; border-radius: 4px;
             opacity: 0.7; z-index: 0; animation: float 10s infinite linear;
@@ -97,7 +107,6 @@
 
         .keyboard { 
             display: flex; flex-direction: column; align-items: center; width: 100%; 
-            transform: scale(var(--game-scale)); transform-origin: top center;
         }
         .kb-row { display: flex; justify-content: center; margin-bottom: 5px; }
         .key {
@@ -124,6 +133,16 @@
 
         .drop-zone { border: 2px dashed #888; padding: 10px; text-align: center; cursor: pointer; margin-top: 5px; background: #f9f9f9; font-size: 0.8rem; }
         .drop-zone.dragover { background: #e3f2fd; border-color: var(--lego-blue); }
+
+        /* (4) TYPING THE ANSWER: Center the word, make font size twice current (1.5rem -> 3rem) */
+        .typing-answer {
+            font-size: 3rem !important; 
+            margin: 20px auto !important; 
+            text-align: center;
+            width: 100%;
+            font-weight: 900;
+            color: var(--lego-blue);
+        }
     </style>
 </head>
 <body>
@@ -174,17 +193,19 @@
     </div>
 
     <div id="game-screen" class="screen">
-        <div class="game-picker">
-            <span>Range: </span><input type="text" id="p-range" value="1-20" style="width:60px">
-            <span>Student:</span> <b id="num-p">-</b>
-            <button class="btn btn-small" onclick="pickStudent('p')">PICK</button>
-            <input type="range" min="0.5" max="1.5" step="0.1" value="1" oninput="adjustZoom(this.value)">
+        <div id="game-container">
+            <div class="game-picker">
+                <span>Range: </span><input type="text" id="p-range" value="1-20" style="width:60px">
+                <span>Student:</span> <b id="num-p">-</b>
+                <button class="btn btn-small" onclick="pickStudent('p')">PICK</button>
+                <input type="range" min="0.5" max="1.5" step="0.1" value="1" oninput="adjustZoom(this.value)">
+            </div>
+            <img id="p-image" class="sentence-img">
+            <div id="p-display" class="display-area"></div>
+            <div id="p-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+            <button class="btn btn-yellow" onclick="speakSentence()">🔊 LISTEN</button>
+            <button id="next-p" class="btn btn-green" style="display:none" onclick="nextRound()">NEXT ➔</button>
         </div>
-        <img id="p-image" class="sentence-img">
-        <div id="p-display" class="display-area"></div>
-        <div id="p-interaction"></div>
-        <button class="btn btn-yellow" onclick="speakSentence()">🔊 LISTEN</button>
-        <button id="next-p" class="btn btn-green" style="display:none" onclick="nextRound()">NEXT ➔</button>
     </div>
 
     <div id="duel-screen" class="screen" style="padding:0">
@@ -194,14 +215,14 @@
                 <div class="game-picker"><b id="name-l">RED</b>: <span id="num-l">-</span> <button class="btn btn-small" onclick="pickStudent('l')">PICK</button></div>
                 <img id="l-image" class="sentence-img">
                 <div id="l-display" class="display-area" style="font-size:1.5rem"></div>
-                <div id="l-interaction"></div>
+                <div id="l-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
             </div>
             <div class="team-side" style="background:#e3f2fd">
                 <div id="score-r" class="scoreboard">0</div>
                 <div class="game-picker"><b id="name-r">BLUE</b>: <span id="num-r">-</span> <button class="btn btn-small" onclick="pickStudent('r')">PICK</button></div>
                 <img id="r-image" class="sentence-img">
                 <div id="r-display" class="display-area" style="font-size:1.5rem"></div>
-                <div id="r-interaction"></div>
+                <div id="r-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
             </div>
         </div>
         <button class="btn btn-yellow btn-small" style="position:fixed; bottom:70px" onclick="speakSentence()">🔊 LISTEN</button>
@@ -253,11 +274,10 @@
         let gameMode = 'unscramble'; 
         let scores = { A: 0, B: 0 };
         let isWaiting = false;
-        let isShift = true;
+        let isShift = false; // (3) Change default to false for small caps
         let kbLayout = 'ABC';
         let currentImgData = "";
 
-        // Drag and Drop Logic Fix
         const dropZone = document.getElementById('drop-zone');
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
             dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false);
@@ -291,13 +311,13 @@
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 100; // Aggressive Shrink
+                    const MAX_WIDTH = 100;
                     const scale = MAX_WIDTH / img.width;
                     canvas.width = MAX_WIDTH;
                     canvas.height = img.height * scale;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    currentImgData = canvas.toDataURL('image/jpeg', 0.3); // Low quality for max compression
+                    currentImgData = canvas.toDataURL('image/jpeg', 0.3);
                     document.getElementById('img-preview').innerHTML = `<img src="${currentImgData}" style="height:30px"> Loaded!`;
                 };
                 img.src = e.target.result;
@@ -311,16 +331,13 @@
             const sc = document.getElementById('edit-spell-correct').value;
             const gw = document.getElementById('edit-grammar-wrong').value;
             const gc = document.getElementById('edit-grammar-correct').value;
-
             if(!s) return alert("Please enter a sentence");
-            
             sentences.push({
                 full: s,
                 spellData: `${sw}-${sc}`,
                 grammarData: `${gw}-${gc}`,
                 img: currentImgData
             });
-
             renderSetList();
             clearEditorInputs();
         }
@@ -389,7 +406,6 @@
             index = 0; scores = { A:0, B:0 };
             const order = document.querySelector('input[name="order-sel"]:checked').value;
             if(order === 'shuffle') sentences.sort(() => Math.random() - 0.5);
-            
             if(playType === 'duel') {
                 document.getElementById('name-l').innerText = document.getElementById('team-a-name').value;
                 document.getElementById('name-r').innerText = document.getElementById('team-b-name').value;
@@ -444,19 +460,18 @@
             } 
             else {
                 let promptText = current.full;
-                let answer = "";
                 let parts = (gameMode === 'spell' ? current.spellData : current.grammarData).split('-');
                 let wrong = parts[0] || "___";
                 let correct = parts[1] || "___";
                 promptText = current.full.replace(correct, wrong);
-                answer = correct;
                 
                 display.innerText = promptText;
-                display.dataset.answer = answer;
+                display.dataset.answer = correct;
                 display.style.color = "var(--lego-red)";
                 const inputArea = document.createElement('div');
                 inputArea.id = side + "-input-val";
-                inputArea.style.fontSize = "1.5rem"; inputArea.style.margin = "10px";
+                // (4) Use the new typing-answer class for centered, larger text
+                inputArea.className = "typing-answer";
                 inputArea.innerText = "_";
                 container.appendChild(inputArea);
                 renderKeyboard(container, side);
@@ -492,7 +507,8 @@
             });
 
             const r4 = document.createElement('div'); r4.className = "kb-row";
-            const shift = document.createElement('div'); shift.className = "key"; shift.innerText = "SHIFT";
+            // (3) Label changed from SHIFT to CAPS
+            const shift = document.createElement('div'); shift.className = "key"; shift.innerText = "CAPS";
             shift.onclick = () => { isShift = !isShift; renderKeyboard(target, side); };
             const space = document.createElement('div'); space.className = "key"; space.innerText = "SPACE"; space.style.width = "100px";
             space.onclick = () => { document.getElementById(side + "-input-val").innerText += " "; };
@@ -539,6 +555,7 @@
             window.speechSynthesis.speak(u);
         }
 
+        // (2) Fix: adjustZoom now correctly updates the CSS variable
         function adjustZoom(v) { document.documentElement.style.setProperty('--game-scale', v); }
 
         function pickStudent(side) {
@@ -557,13 +574,10 @@
             if(sentences.length === 0) return alert("List is empty!");
             const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(sentences));
             const url = window.location.href.split('?')[0] + "?w=" + compressed;
-            
-            // Link limit validation
             if(url.length > 8000) {
                 alert("Link is too long! Please remove some images or reduce sentence count.");
                 return;
             }
-
             const lb = document.getElementById('link-box');
             lb.innerHTML = `<b>COPY LINK:</b><br><small>${url.substring(0, 50)}...</small>`;
             lb.style.display = 'block';
