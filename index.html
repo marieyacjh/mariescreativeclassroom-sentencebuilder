@@ -202,7 +202,7 @@
             </div>
             <img id="p-image" class="sentence-img">
             <div id="p-display" class="display-area"></div>
-            <div id="p-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+            <div id="p-interaction" style="width: 100%; display: flex; flex-flow: row wrap; justify-content: center; align-items: center;"></div>
             <button class="btn btn-yellow" onclick="speakSentence()">🔊 LISTEN</button>
             <button id="next-p" class="btn btn-green" style="display:none" onclick="nextRound()">NEXT ➔</button>
         </div>
@@ -215,14 +215,14 @@
                 <div class="game-picker"><b id="name-l">RED</b>: <span id="num-l">-</span> <button class="btn btn-small" onclick="pickStudent('l')">PICK</button></div>
                 <img id="l-image" class="sentence-img">
                 <div id="l-display" class="display-area" style="font-size:1.5rem"></div>
-                <div id="l-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+                <div id="l-interaction" style="width: 100%; display: flex; flex-flow: row wrap; justify-content: center; align-items: center;"></div>
             </div>
             <div class="team-side" style="background:#e3f2fd">
                 <div id="score-r" class="scoreboard">0</div>
                 <div class="game-picker"><b id="name-r">BLUE</b>: <span id="num-r">-</span> <button class="btn btn-small" onclick="pickStudent('r')">PICK</button></div>
                 <img id="r-image" class="sentence-img">
                 <div id="r-display" class="display-area" style="font-size:1.5rem"></div>
-                <div id="r-interaction" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+                <div id="r-interaction" style="width: 100%; display: flex; flex-flow: row wrap; justify-content: center; align-items: center;"></div>
             </div>
         </div>
         <button class="btn btn-yellow btn-small" style="position:fixed; bottom:70px" onclick="speakSentence()">🔊 LISTEN</button>
@@ -274,7 +274,7 @@
         let gameMode = 'unscramble'; 
         let scores = { A: 0, B: 0 };
         let isWaiting = false;
-        let isShift = false; // (3) Change default to false for small caps
+        let isShift = false; 
         let kbLayout = 'ABC';
         let currentImgData = "";
 
@@ -454,8 +454,8 @@
                 });
                 const reset = document.createElement('button');
                 reset.className = "btn btn-small btn-red"; reset.innerText = "RESET";
+                reset.style.margin = "10px";
                 reset.onclick = () => renderRound(side);
-                container.appendChild(document.createElement('br'));
                 container.appendChild(reset);
             } 
             else {
@@ -470,7 +470,6 @@
                 display.style.color = "var(--lego-red)";
                 const inputArea = document.createElement('div');
                 inputArea.id = side + "-input-val";
-                // (4) Use the new typing-answer class for centered, larger text
                 inputArea.className = "typing-answer";
                 inputArea.innerText = "_";
                 container.appendChild(inputArea);
@@ -506,18 +505,32 @@
                 kbWrap.appendChild(rDiv);
             });
 
+            // (3) Button row in order: CAPS, SPACE, SYMBOLS, DELETE
             const r4 = document.createElement('div'); r4.className = "kb-row";
-            // (3) Label changed from SHIFT to CAPS
-            const shift = document.createElement('div'); shift.className = "key"; shift.innerText = "CAPS";
-            shift.onclick = () => { isShift = !isShift; renderKeyboard(target, side); };
+            
+            const caps = document.createElement('div'); caps.className = "key"; caps.innerText = "CAPS";
+            caps.onclick = () => { isShift = !isShift; renderKeyboard(target, side); };
+            
             const space = document.createElement('div'); space.className = "key"; space.innerText = "SPACE"; space.style.width = "100px";
-            space.onclick = () => { document.getElementById(side + "-input-val").innerText += " "; };
+            space.onclick = () => { 
+                const out = document.getElementById(side + "-input-val");
+                if(out.innerText === "_") out.innerText = "";
+                out.innerText += " "; 
+            };
+
+            const sym = document.createElement('div'); sym.className = "key"; sym.innerText = kbLayout === 'ABC' ? "?123" : "ABC";
+            sym.onclick = () => { kbLayout = kbLayout === 'ABC' ? 'SYM' : 'ABC'; renderKeyboard(target, side); };
+
             const del = document.createElement('div'); del.className = "key"; del.innerText = "DEL";
             del.onclick = () => {
                 let out = document.getElementById(side + "-input-val");
                 out.innerText = out.innerText.length > 1 ? out.innerText.slice(0, -1) : "_";
             };
-            r4.appendChild(shift); r4.appendChild(space); r4.appendChild(del);
+
+            r4.appendChild(caps); 
+            r4.appendChild(space); 
+            r4.appendChild(sym);
+            r4.appendChild(del);
             kbWrap.appendChild(r4);
         }
 
@@ -555,7 +568,6 @@
             window.speechSynthesis.speak(u);
         }
 
-        // (2) Fix: adjustZoom now correctly updates the CSS variable
         function adjustZoom(v) { document.documentElement.style.setProperty('--game-scale', v); }
 
         function pickStudent(side) {
