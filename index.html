@@ -123,6 +123,7 @@
         .set-item img { height: 60px; border: 1px solid #000; vertical-align: middle; margin-right: 10px; }
 
         .drop-zone { border: 2px dashed #888; padding: 10px; text-align: center; cursor: pointer; margin-top: 5px; background: #f9f9f9; font-size: 0.8rem; }
+        .drop-zone.dragover { background: #e3f2fd; border-color: var(--lego-blue); }
     </style>
 </head>
 <body>
@@ -220,7 +221,7 @@
                 <input type="text" id="edit-grammar-correct" placeholder="is" style="width:40%">
             </td></tr>
             <tr><td class="row-label">PICTURE</td><td>
-                <div class="drop-zone" onclick="document.getElementById('img-upload').click()">
+                <div class="drop-zone" id="drop-zone" onclick="document.getElementById('img-upload').click()">
                     Drag Image or Click to Upload
                     <input type="file" id="img-upload" style="display:none" accept="image/*" onchange="handleFile(this.files[0])">
                     <div id="img-preview" style="font-size:10px; color:green;"></div>
@@ -256,6 +257,18 @@
         let kbLayout = 'ABC';
         let currentImgData = "";
 
+        // Drag and Drop Logic Fix
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', e => {
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
         window.onload = () => {
             const params = new URLSearchParams(window.location.search);
             const data = params.get('w');
@@ -275,8 +288,19 @@
             if(!file) return;
             const reader = new FileReader();
             reader.onload = (e) => {
-                currentImgData = e.target.result;
-                document.getElementById('img-preview').innerHTML = `<img src="${currentImgData}" style="height:30px"> Loaded!`;
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 200; // Thumbnail Mode: shrink for link sharing
+                    const scale = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    currentImgData = canvas.toDataURL('image/jpeg', 0.6); // Compress to 60% quality
+                    document.getElementById('img-preview').innerHTML = `<img src="${currentImgData}" style="height:30px"> Loaded!`;
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -533,6 +557,13 @@
             if(sentences.length === 0) return alert("List is empty!");
             const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(sentences));
             const url = window.location.href.split('?')[0] + "?w=" + compressed;
+            
+            // Link limit validation
+            if(url.length > 8000) {
+                alert("Link is too long! Please remove some images or reduce sentence count.");
+                return;
+            }
+
             const lb = document.getElementById('link-box');
             lb.innerHTML = `<b>COPY LINK:</b><br><small>${url.substring(0, 50)}...</small>`;
             lb.style.display = 'block';
@@ -541,6 +572,7 @@
             localStorage.setItem('sentence_history', JSON.stringify(history.slice(0, 10)));
             navigator.clipboard.writeText(url);
             alert("Game Link Copied!");
+            updateHistoryUI();
         }
 
         function updateHistoryUI() {
