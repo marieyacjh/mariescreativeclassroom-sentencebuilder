@@ -291,13 +291,13 @@
                 const img = new Image();
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 200; // Thumbnail Mode: shrink for link sharing
+                    const MAX_WIDTH = 100; // Aggressive Shrink
                     const scale = MAX_WIDTH / img.width;
                     canvas.width = MAX_WIDTH;
                     canvas.height = img.height * scale;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    currentImgData = canvas.toDataURL('image/jpeg', 0.6); // Compress to 60% quality
+                    currentImgData = canvas.toDataURL('image/jpeg', 0.3); // Low quality for max compression
                     document.getElementById('img-preview').innerHTML = `<img src="${currentImgData}" style="height:30px"> Loaded!`;
                 };
                 img.src = e.target.result;
