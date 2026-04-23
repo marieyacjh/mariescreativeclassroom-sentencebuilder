@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sentence Builder - Marie's Creative Classroom</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <style>
         :root {
             --lego-red: #e3000b;
@@ -112,14 +113,16 @@
         .duel-container { display: flex; width: 100vw; height: 75vh; }
         .team-side { flex: 1; display: flex; flex-direction: column; align-items: center; border: 2px solid var(--lego-black); padding: 10px; }
         
-        .edit-table { width: 90%; border-collapse: collapse; background: white; margin-bottom: 20px; }
+        .edit-table { width: 95%; border-collapse: collapse; background: white; margin-bottom: 10px; }
         .edit-table td { border: 2px solid black; padding: 10px; }
-        .edit-table input { width: 95%; border: none; font-size: 1.1rem; padding: 5px; }
-        .row-label { background: var(--lego-grey); font-weight: bold; width: 180px; }
+        .edit-table input { width: 95%; border: 1px solid #ccc; font-size: 1rem; padding: 5px; }
+        .row-label { background: var(--lego-grey); font-weight: bold; width: 150px; }
         
-        #history-list { width: 80%; background: white; border: 3px solid black; padding: 10px; min-height: 100px; }
+        #set-list { width: 95%; margin-top: 20px; }
+        .set-item { background: white; border: 3px solid black; padding: 10px; margin-bottom: 10px; position: relative; border-radius: 8px; }
+        .set-item img { height: 60px; border: 1px solid #000; vertical-align: middle; margin-right: 10px; }
 
-        .drop-zone { border: 2px dashed #888; padding: 10px; text-align: center; cursor: pointer; margin-top: 5px; background: #f9f9f9; }
+        .drop-zone { border: 2px dashed #888; padding: 10px; text-align: center; cursor: pointer; margin-top: 5px; background: #f9f9f9; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -207,29 +210,32 @@
     <div id="edit-screen" class="screen">
         <h2>EDIT SENTENCES</h2>
         <table class="edit-table">
-            <tr><td class="row-label">SENTENCE</td><td><input type="text" id="edit-sentence" placeholder="The quick brown fox jumps over the dog."></td></tr>
-            <tr><td class="row-label">SPELLING WORD<br><small>(Incorrect | Correct)</small></td><td>
-                <input type="text" id="edit-spell-wrong" placeholder="jmps" style="width:45%"> | 
-                <input type="text" id="edit-spell-correct" placeholder="jumps" style="width:45%">
+            <tr><td class="row-label">SENTENCE</td><td><input type="text" id="edit-sentence" placeholder="The cat is big."></td></tr>
+            <tr><td class="row-label">SPELLING<br><small>Wrong | Right</small></td><td>
+                <input type="text" id="edit-spell-wrong" placeholder="bg" style="width:40%"> | 
+                <input type="text" id="edit-spell-correct" placeholder="big" style="width:40%">
             </td></tr>
-            <tr><td class="row-label">GRAMMAR WORD<br><small>(Incorrect | Correct)</small></td><td>
-                <input type="text" id="edit-grammar-wrong" placeholder="goes" style="width:45%"> | 
-                <input type="text" id="edit-grammar-correct" placeholder="jumps" style="width:45%">
+            <tr><td class="row-label">GRAMMAR<br><small>Wrong | Right</small></td><td>
+                <input type="text" id="edit-grammar-wrong" placeholder="are" style="width:40%"> | 
+                <input type="text" id="edit-grammar-correct" placeholder="is" style="width:40%">
             </td></tr>
             <tr><td class="row-label">PICTURE</td><td>
-                <div class="drop-zone" onclick="document.getElementById('img-upload').click()" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
-                    Drag & Drop Image or Click to Upload
+                <div class="drop-zone" onclick="document.getElementById('img-upload').click()">
+                    Drag Image or Click to Upload
                     <input type="file" id="img-upload" style="display:none" accept="image/*" onchange="handleFile(this.files[0])">
-                    <div id="img-preview" style="font-size:10px; color:green; margin-top:5px"></div>
+                    <div id="img-preview" style="font-size:10px; color:green;"></div>
                 </div>
             </td></tr>
         </table>
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-small btn-green" onclick="addToList()">+ ADD TO LIST</button>
-            <button class="btn btn-small btn-red" onclick="clearEditor()">CLEAR ALL</button>
+        
+        <button class="btn btn-green btn-small" onclick="addSet()">+ ADD ANOTHER SET</button>
+        
+        <div id="set-list"></div>
+
+        <div style="margin-top:20px;">
+            <button class="btn btn-green" onclick="saveList()">SAVE & GENERATE LINK</button>
+            <button class="btn btn-red" onclick="clearAllSets()">CLEAR ALL</button>
         </div>
-        <textarea id="word-input" style="width:90%; height:150px; margin-top:20px;" placeholder="Data format: Sentence | SpellWrong-SpellCorrect | GramWrong-GramCorrect | [ImageData]"></textarea>
-        <button class="btn btn-green" onclick="saveList()">SAVE & GENERATE LINK</button>
         <div id="link-box" style="word-break:break-all; padding:10px; background:#fff; border: 2px solid black; margin-top: 10px; display:none; max-width: 80%;"></div>
     </div>
 
@@ -255,9 +261,10 @@
             const data = params.get('w');
             if(data) {
                 try {
-                    sentences = JSON.parse(atob(data));
+                    const decompressed = LZString.decompressFromEncodedURIComponent(data);
+                    sentences = JSON.parse(decompressed);
                     document.getElementById('load-msg').style.display = 'block';
-                    syncTextArea();
+                    renderSetList();
                 } catch(e) { console.error("Error loading data"); }
             }
             createFloatingBricks();
@@ -269,30 +276,55 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 currentImgData = e.target.result;
-                document.getElementById('img-preview').innerText = "Image Loaded: " + file.name;
+                document.getElementById('img-preview').innerHTML = `<img src="${currentImgData}" style="height:30px"> Loaded!`;
             };
             reader.readAsDataURL(file);
         }
 
-        function handleDrop(e) {
-            e.preventDefault();
-            handleFile(e.dataTransfer.files[0]);
-        }
-
-        function addToList() {
+        function addSet() {
             const s = document.getElementById('edit-sentence').value;
-            const spC = document.getElementById('edit-spell-correct').value;
-            const spW = document.getElementById('edit-spell-wrong').value;
-            const gW = document.getElementById('edit-grammar-wrong').value;
-            const gC = document.getElementById('edit-grammar-correct').value;
+            const sw = document.getElementById('edit-spell-wrong').value;
+            const sc = document.getElementById('edit-spell-correct').value;
+            const gw = document.getElementById('edit-grammar-wrong').value;
+            const gc = document.getElementById('edit-grammar-correct').value;
 
-            if(!s) return;
-            // Format: Sentence | SpellWrong-SpellCorrect | GrammarWrong-GrammarCorrect | ImageData
-            const entry = `${s} | ${spW}-${spC} | ${gW}-${gC} | ${currentImgData}`;
-            const area = document.getElementById('word-input');
-            area.value += (area.value ? "\n" : "") + entry;
+            if(!s) return alert("Please enter a sentence");
+            
+            sentences.push({
+                full: s,
+                spellData: `${sw}-${sc}`,
+                grammarData: `${gw}-${gc}`,
+                img: currentImgData
+            });
+
+            renderSetList();
             clearEditorInputs();
         }
+
+        function renderSetList() {
+            const listDiv = document.getElementById('set-list');
+            listDiv.innerHTML = "";
+            sentences.forEach((item, i) => {
+                const row = document.createElement('div');
+                row.className = "set-item";
+                row.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px">
+                        <span><b>#${i+1}</b></span>
+                        ${item.img ? `<img src="${item.img}">` : '[No Img]'}
+                        <div style="flex:1">
+                            <input type="text" value="${item.full}" onchange="updateItem(${i}, 'full', this.value)" style="width:90%; margin-bottom:4px"><br>
+                            <small>Spell: ${item.spellData} | Gram: ${item.grammarData}</small>
+                        </div>
+                        <button class="btn-red btn-small" onclick="removeSet(${i})">X</button>
+                    </div>
+                `;
+                listDiv.appendChild(row);
+            });
+        }
+
+        function updateItem(idx, key, val) { sentences[idx][key] = val; }
+        function removeSet(idx) { sentences.splice(idx, 1); renderSetList(); }
+        function clearAllSets() { if(confirm("Delete all sets?")) { sentences = []; renderSetList(); } }
 
         function clearEditorInputs() {
             document.getElementById('edit-sentence').value = "";
@@ -302,12 +334,6 @@
             document.getElementById('edit-grammar-correct').value = "";
             document.getElementById('img-preview').innerText = "";
             currentImgData = "";
-        }
-
-        function clearEditor() { if(confirm("Clear everything?")) document.getElementById('word-input').value = ""; }
-
-        function syncTextArea() {
-            document.getElementById('word-input').value = sentences.map(s => `${s.full} | ${s.spellData || ""} | ${s.grammarData || ""} | ${s.img || ""}`).join('\n');
         }
 
         function createFloatingBricks() {
@@ -327,11 +353,7 @@
             document.getElementById(id).classList.add('active');
         }
 
-        function openModeSelect(type) {
-            playType = type;
-            showScreen('mode-screen');
-        }
-
+        function openModeSelect(type) { playType = type; showScreen('mode-screen'); }
         function startSetup(mode) {
             gameMode = mode;
             if(playType === 'duel') showScreen('setup-screen');
@@ -339,20 +361,9 @@
         }
 
         function confirmStart() {
+            if(sentences.length === 0) return alert("Please add sentences first!");
             index = 0; scores = { A:0, B:0 };
             const order = document.querySelector('input[name="order-sel"]:checked').value;
-            const raw = document.getElementById('word-input').value.split('\n').filter(l => l.trim());
-            
-            sentences = raw.map(line => {
-                let parts = line.split('|');
-                return { 
-                    full: parts[0]?.trim() || "", 
-                    spellData: parts[1]?.trim() || "",
-                    grammarData: parts[2]?.trim() || "",
-                    img: parts[3]?.trim() || ""
-                };
-            });
-
             if(order === 'shuffle') sentences.sort(() => Math.random() - 0.5);
             
             if(playType === 'duel') {
@@ -380,9 +391,7 @@
             display.classList.remove('tile-empty');
 
             const current = sentences[index];
-
-            // Handle Image Placement
-            if(current.img && current.img.length > 10) {
+            if(current.img) {
                 imgEl.src = current.img;
                 imgEl.style.display = 'block';
             } else {
@@ -412,25 +421,15 @@
             else {
                 let promptText = current.full;
                 let answer = "";
-
-                if(gameMode === 'spell') {
-                    let parts = current.spellData.split('-');
-                    let wrong = parts[0] || "_____";
-                    let correct = parts[1] || "ERROR";
-                    promptText = current.full.replace(correct, wrong);
-                    answer = correct;
-                } else if (gameMode === 'grammar') {
-                    let parts = current.grammarData.split('-');
-                    let wrong = parts[0] || "WRONG";
-                    let correct = parts[1] || "CORRECT";
-                    promptText = current.full.replace(correct, wrong);
-                    answer = correct;
-                }
+                let parts = (gameMode === 'spell' ? current.spellData : current.grammarData).split('-');
+                let wrong = parts[0] || "___";
+                let correct = parts[1] || "___";
+                promptText = current.full.replace(correct, wrong);
+                answer = correct;
                 
                 display.innerText = promptText;
                 display.dataset.answer = answer;
                 display.style.color = "var(--lego-red)";
-                
                 const inputArea = document.createElement('div');
                 inputArea.id = side + "-input-val";
                 inputArea.style.fontSize = "1.5rem"; inputArea.style.margin = "10px";
@@ -448,15 +447,9 @@
                 target.appendChild(kbWrap);
             }
             kbWrap.innerHTML = '';
+            let rows = kbLayout === 'ABC' ? ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"] : ["1234567890", "!@#$%^&*()", "?.,'\"-+=:/"];
 
-            let rows = [];
-            if(kbLayout === 'ABC') {
-                rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
-            } else {
-                rows = ["1234567890", "!@#$%^&*()", "?.,'\"-+=:/"];
-            }
-
-            rows.forEach((row, i) => {
+            rows.forEach((row) => {
                 const rDiv = document.createElement('div'); rDiv.className = "kb-row";
                 row.split('').forEach(char => {
                     const k = document.createElement('div'); k.className = "key";
@@ -484,10 +477,7 @@
                 let out = document.getElementById(side + "-input-val");
                 out.innerText = out.innerText.length > 1 ? out.innerText.slice(0, -1) : "_";
             };
-            const toggle = document.createElement('div'); toggle.className = "key"; toggle.innerText = kbLayout === 'ABC' ? "123" : "ABC";
-            toggle.onclick = () => { kbLayout = (kbLayout === 'ABC' ? '123' : 'ABC'); renderKeyboard(target, side); };
-
-            r4.appendChild(shift); r4.appendChild(space); r4.appendChild(del); r4.appendChild(toggle);
+            r4.appendChild(shift); r4.appendChild(space); r4.appendChild(del);
             kbWrap.appendChild(r4);
         }
 
@@ -496,7 +486,6 @@
             const display = document.getElementById(side + '-display');
             display.style.color = "var(--lego-green)";
             display.innerText = sentences[index].full; 
-            
             if(playType === 'duel') {
                 if(side === 'l') scores.A++; else scores.B++;
                 document.getElementById('score-l').innerText = scores.A;
@@ -511,23 +500,18 @@
         function nextRound() {
             index++;
             if(index >= sentences.length) {
-                alert("GAME OVER!\nFinal Score: " + scores.A + " to " + scores.B);
+                alert("GAME OVER!\nScore: " + scores.A + " - " + scores.B);
                 showScreen('menu-screen'); return;
             }
             document.getElementById('next-p').style.display = 'none';
             document.getElementById('next-duel').style.display = 'none';
-            if(playType === 'duel') { renderRound('l'); renderRound('r'); }
-            else renderRound('p');
+            if(playType === 'duel') { renderRound('l'); renderRound('r'); } else renderRound('p');
         }
 
         function speakSentence() {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(sentences[index].full);
-            u.rate = 0.8; // 20% Slower
-            const voices = window.speechSynthesis.getVoices();
-            const usVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang === 'en-US');
-            if(usVoice) u.voice = usVoice;
-            u.lang = 'en-US'; 
+            u.rate = 0.8;
             window.speechSynthesis.speak(u);
         }
 
@@ -546,35 +530,25 @@
         }
 
         function saveList() {
-            const raw = document.getElementById('word-input').value.split('\n').filter(l => l.trim());
-            const list = raw.map(line => {
-                let parts = line.split('|');
-                return { 
-                    full: parts[0]?.trim() || "", 
-                    spellData: parts[1]?.trim() || "", 
-                    grammarData: parts[2]?.trim() || "",
-                    img: parts[3]?.trim() || ""
-                };
-            });
-            const encoded = btoa(JSON.stringify(list));
-            const url = window.location.href.split('?')[0] + "?w=" + encoded;
+            if(sentences.length === 0) return alert("List is empty!");
+            const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(sentences));
+            const url = window.location.href.split('?')[0] + "?w=" + compressed;
             const lb = document.getElementById('link-box');
-            lb.innerHTML = `<b>COPY THIS LINK:</b><br><small>${url}</small>`;
+            lb.innerHTML = `<b>COPY LINK:</b><br><small>${url.substring(0, 50)}...</small>`;
             lb.style.display = 'block';
             let history = JSON.parse(localStorage.getItem('sentence_history') || "[]");
             history.unshift({ date: new Date().toLocaleString(), url: url });
             localStorage.setItem('sentence_history', JSON.stringify(history.slice(0, 10)));
             navigator.clipboard.writeText(url);
             alert("Game Link Copied!");
-            updateHistoryUI();
         }
 
         function updateHistoryUI() {
             const list = JSON.parse(localStorage.getItem('sentence_history') || "[]");
             const container = document.getElementById('history-list');
-            container.innerHTML = list.length === 0 ? "No history yet." : list.map(item => 
-                `<div style="margin-bottom:10px; border-bottom:1px solid #ccc; padding:5px;">
-                    <b>${item.date}</b><br><a href="${item.url}" style="font-size:10px; color:blue; word-break:break-all;">${item.url}</a>
+            container.innerHTML = list.length === 0 ? "No history." : list.map(item => 
+                `<div style="margin-bottom:10px; border-bottom:1px solid #ccc;">
+                    <b>${item.date}</b><br><a href="${item.url}" style="font-size:10px; color:blue;">Open Game</a>
                 </div>`).join('');
         }
 
