@@ -113,7 +113,7 @@
         .edit-table { width: 90%; border-collapse: collapse; background: white; margin-bottom: 20px; }
         .edit-table td { border: 2px solid black; padding: 10px; }
         .edit-table input { width: 95%; border: none; font-size: 1.1rem; padding: 5px; }
-        .row-label { background: var(--lego-grey); font-weight: bold; width: 150px; }
+        .row-label { background: var(--lego-grey); font-weight: bold; width: 180px; }
         
         #history-list { width: 80%; background: white; border: 3px solid black; padding: 10px; min-height: 100px; }
     </style>
@@ -201,8 +201,14 @@
         <h2>EDIT SENTENCES</h2>
         <table class="edit-table">
             <tr><td class="row-label">SENTENCE</td><td><input type="text" id="edit-sentence" placeholder="The quick brown fox jumps over the dog."></td></tr>
-            <tr><td class="row-label">SPELLING WORD</td><td><input type="text" id="edit-spell" placeholder="jumps (word to spell)"></td></tr>
-            <tr><td class="row-label">GRAMMAR WORD</td><td><input type="text" id="edit-grammar" placeholder="goes (incorrect word that appears)"></td></tr>
+            <tr><td class="row-label">SPELLING WORD<br><small>(Correct word | Misspelled version)</small></td><td>
+                <input type="text" id="edit-spell-correct" placeholder="jumps" style="width:45%"> | 
+                <input type="text" id="edit-spell-wrong" placeholder="jmps" style="width:45%">
+            </td></tr>
+            <tr><td class="row-label">GRAMMAR WORD<br><small>(Incorrect used | Correct replacement)</small></td><td>
+                <input type="text" id="edit-grammar-wrong" placeholder="goes" style="width:45%"> | 
+                <input type="text" id="edit-grammar-correct" placeholder="jumps" style="width:45%">
+            </td></tr>
         </table>
         <div style="display:flex; gap:10px;">
             <button class="btn btn-small btn-green" onclick="addToList()">+ ADD TO LIST</button>
@@ -245,10 +251,14 @@
 
         function addToList() {
             const s = document.getElementById('edit-sentence').value;
-            const sp = document.getElementById('edit-spell').value;
-            const g = document.getElementById('edit-grammar').value;
+            const spC = document.getElementById('edit-spell-correct').value;
+            const spW = document.getElementById('edit-spell-wrong').value;
+            const gW = document.getElementById('edit-grammar-wrong').value;
+            const gC = document.getElementById('edit-grammar-correct').value;
+
             if(!s) return;
-            const entry = `${s} | ${sp} | ${g}`;
+            // Format: Sentence | SpellCorrect-SpellWrong | GrammarWrong-GrammarCorrect
+            const entry = `${s} | ${spC}-${spW} | ${gW}-${gC}`;
             const area = document.getElementById('word-input');
             area.value += (area.value ? "\n" : "") + entry;
             clearEditorInputs();
@@ -256,14 +266,16 @@
 
         function clearEditorInputs() {
             document.getElementById('edit-sentence').value = "";
-            document.getElementById('edit-spell').value = "";
-            document.getElementById('edit-grammar').value = "";
+            document.getElementById('edit-spell-correct').value = "";
+            document.getElementById('edit-spell-wrong').value = "";
+            document.getElementById('edit-grammar-wrong').value = "";
+            document.getElementById('edit-grammar-correct').value = "";
         }
 
         function clearEditor() { if(confirm("Clear everything?")) document.getElementById('word-input').value = ""; }
 
         function syncTextArea() {
-            document.getElementById('word-input').value = sentences.map(s => `${s.full} | ${s.targetSpell || ""} | ${s.targetGrammar || ""}`).join('\n');
+            document.getElementById('word-input').value = sentences.map(s => `${s.full} | ${s.spellData || ""} | ${s.grammarData || ""}`).join('\n');
         }
 
         function createFloatingBricks() {
@@ -303,8 +315,8 @@
                 let parts = line.split('|');
                 return { 
                     full: parts[0]?.trim() || "", 
-                    targetSpell: parts[1]?.trim() || "",
-                    targetGrammar: parts[2]?.trim() || ""
+                    spellData: parts[1]?.trim() || "",
+                    grammarData: parts[2]?.trim() || ""
                 };
             });
 
@@ -329,6 +341,7 @@
             const display = document.getElementById(side + '-display');
             container.innerHTML = '';
             display.innerText = '';
+            display.style.color = "var(--lego-black)";
             display.classList.remove('tile-empty');
 
             const current = sentences[index];
@@ -355,17 +368,24 @@
             } 
             else {
                 let promptText = current.full;
+                let answer = "";
+
                 if(gameMode === 'spell') {
-                    let target = current.targetSpell || current.full.split(' ')[0];
-                    promptText = current.full.replace(target, "_____");
-                    display.dataset.answer = target;
-                } else {
-                    let wrongWord = current.targetGrammar || "WRONG";
-                    let correctWord = current.targetSpell || current.full.split(' ')[0];
-                    promptText = current.full.replace(correctWord, wrongWord);
-                    display.dataset.answer = correctWord;
+                    let parts = current.spellData.split('-');
+                    let correct = parts[0] || "ERROR";
+                    let wrong = parts[1] || "_____";
+                    promptText = current.full.replace(correct, wrong);
+                    answer = correct;
+                } else if (gameMode === 'grammar') {
+                    let parts = current.grammarData.split('-');
+                    let wrong = parts[0] || "WRONG";
+                    let correct = parts[1] || "CORRECT";
+                    promptText = current.full.replace(correct, wrong);
+                    answer = correct;
                 }
+                
                 display.innerText = promptText;
+                display.dataset.answer = answer;
                 display.style.color = "var(--lego-red)";
                 
                 const inputArea = document.createElement('div');
@@ -411,21 +431,16 @@
                 kbWrap.appendChild(rDiv);
             });
 
-            // Fourth Row
             const r4 = document.createElement('div'); r4.className = "kb-row";
-            
             const shift = document.createElement('div'); shift.className = "key"; shift.innerText = "SHIFT";
             shift.onclick = () => { isShift = !isShift; renderKeyboard(target, side); };
-            
             const space = document.createElement('div'); space.className = "key"; space.innerText = "SPACE"; space.style.width = "100px";
             space.onclick = () => { document.getElementById(side + "-input-val").innerText += " "; };
-
             const del = document.createElement('div'); del.className = "key"; del.innerText = "DEL";
             del.onclick = () => {
                 let out = document.getElementById(side + "-input-val");
                 out.innerText = out.innerText.length > 1 ? out.innerText.slice(0, -1) : "_";
             };
-
             const toggle = document.createElement('div'); toggle.className = "key"; toggle.innerText = kbLayout === 'ABC' ? "123" : "ABC";
             toggle.onclick = () => { kbLayout = (kbLayout === 'ABC' ? '123' : 'ABC'); renderKeyboard(target, side); };
 
@@ -435,8 +450,10 @@
 
         function win(side) {
             isWaiting = true;
-            document.getElementById(side + '-display').style.color = "var(--lego-green)";
-            document.getElementById(side + '-display').innerText = sentences[index].full;
+            const display = document.getElementById(side + '-display');
+            display.style.color = "var(--lego-green)";
+            display.innerText = sentences[index].full; // Show full sentence on win
+            
             if(playType === 'duel') {
                 if(side === 'l') scores.A++; else scores.B++;
                 document.getElementById('score-l').innerText = scores.A;
@@ -461,8 +478,14 @@
         }
 
         function speakSentence() {
+            window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(sentences[index].full);
-            u.lang = 'en-US'; window.speechSynthesis.speak(u);
+            const voices = window.speechSynthesis.getVoices();
+            // Try to find an American accent voice
+            const usVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang === 'en-US');
+            if(usVoice) u.voice = usVoice;
+            u.lang = 'en-US'; 
+            window.speechSynthesis.speak(u);
         }
 
         function adjustZoom(v) { document.documentElement.style.setProperty('--game-scale', v); }
@@ -483,7 +506,7 @@
             const raw = document.getElementById('word-input').value.split('\n').filter(l => l.trim());
             const list = raw.map(line => {
                 let parts = line.split('|');
-                return { full: parts[0]?.trim() || "", targetSpell: parts[1]?.trim() || "", targetGrammar: parts[2]?.trim() || "" };
+                return { full: parts[0]?.trim() || "", spellData: parts[1]?.trim() || "", grammarData: parts[2]?.trim() || "" };
             });
             const encoded = btoa(JSON.stringify(list));
             const url = window.location.href.split('?')[0] + "?w=" + encoded;
